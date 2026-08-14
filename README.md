@@ -32,6 +32,28 @@ npm run preview   # serve the build
 node scripts/smoke.mjs  # browser smoke test (needs a Chromium binary; edit the path at the top)
 ```
 
+## Deploying
+
+Pushing to `claude/matt-os-app-me8bpg` runs `.github/workflows/deploy.yml`, which builds and publishes to GitHub Pages at:
+
+**https://apt36.github.io/Vision-board-/**
+
+### One-time setup
+
+GitHub Pages has to be switched on by a repo admin once — an Actions token isn't allowed to create the Pages site itself, so the first run fails until this is done:
+
+1. Repo → **Settings** → **Pages**
+2. Under **Build and deployment** → **Source**, choose **GitHub Actions**
+3. Re-run the workflow (Actions tab → latest run → **Re-run all jobs**), or just push again
+
+If the Pages section says it's unavailable for private repositories, the account is on the Free plan. Either upgrade, or make the repo public (Settings → General → Change visibility). Publishing the repo only exposes this app's source code — no personal data is in it, since every check-in, weight and note lives in `localStorage` on the phone and is never uploaded.
+
+Note that a published Pages site is reachable by anyone with the URL even when the repo is private; again, that's the app shell only, not the data.
+
+### Hosting somewhere else
+
+The base path is set for the repo subpath. For a domain root, build with `VITE_BASE=/ npm run build`.
+
 ## Install on iPhone
 
-Open the deployed URL in Safari → Share → **Add to Home Screen**. It runs standalone, offline, with all data on-device.
+Open the deployed URL in Safari → Share → **Add to Home Screen**. It runs standalone and offline, with all data on-device.
