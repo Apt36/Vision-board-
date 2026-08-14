@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-core'
 
-const BASE = 'http://localhost:4173'
+const BASE = 'http://localhost:4173/Vision-board-/'
 let failures = 0
 const ok = (name, cond, extra = '') => {
   if (cond) console.log(`  ✓ ${name}`)
@@ -132,12 +132,12 @@ await page.waitForTimeout(100)
 ok('anchor checked', (await page.textContent('main')).includes('1/'))
 
 console.log('10. PWA config')
-const manifest = await page.evaluate(async () => (await fetch('/manifest.webmanifest')).json())
+const manifest = await page.evaluate(async () => (await fetch('/Vision-board-/manifest.webmanifest')).json())
 ok('manifest name', manifest.name === 'Matt OS')
 ok('manifest standalone', manifest.display === 'standalone')
-const swStatus = await page.evaluate(async () => (await fetch('/sw.js')).status)
+const swStatus = await page.evaluate(async () => (await fetch('/Vision-board-/sw.js')).status)
 ok('service worker served', swStatus === 200)
-const iconStatus = await page.evaluate(async () => (await fetch('/apple-touch-icon.png')).status)
+const iconStatus = await page.evaluate(async () => (await fetch('/Vision-board-/apple-touch-icon.png')).status)
 ok('apple touch icon', iconStatus === 200)
 
 console.log('11. Desktop viewport sanity')
