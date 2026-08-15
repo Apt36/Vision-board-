@@ -71,7 +71,13 @@ ok('8 channels render', await page.locator('.channel-card').count() === 8,
 {
   const t = await page.textContent('main')
   ok('TRUCE channel exists', t.includes('TRUCE'))
-  ok('balance note shown', t.includes('starve') || t.includes('running dry') || t.includes('balanced'))
+  ok('balance note shown', t.includes('first turn') || t.includes('running dry') || t.includes('balanced'))
+  // a channel must never be named as starving and fed in the same sentence
+  const bal = await page.locator('main .steering').first().textContent()
+  const named = ['THE BODY','THE BUILD','TRUCE','THE MIND','THE PEOPLE','THE TONGUE','THE SURFACE','THE HOME']
+    .filter(n => bal.includes(n))
+  const dupes = named.filter(n => bal.split(n).length - 1 > 1)
+  ok('no channel both starving and fed', dupes.length === 0, JSON.stringify({ bal, dupes }))
 }
 await page.locator('.channel-card', { hasText: 'TRUCE' }).click()
 await page.waitForTimeout(250)

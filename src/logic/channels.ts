@@ -181,14 +181,30 @@ export function starvedFirst(states: ChannelState[]): ChannelState[] {
 export function networkBalance(states: ChannelState[]): { balanced: boolean; note: string } {
   if (states.length === 0) return { balanced: true, note: '' }
   const starved = states.filter(s => s.pressure >= 2).sort((a, b) => b.pressure - a.pressure)
-  const fed = [...states].sort((a, b) => a.pressure - b.pressure)[0]
   if (starved.length === 0) {
     return { balanced: true, note: 'The network is balanced. Everything is getting fed.' }
   }
+
   const names = starved.slice(0, 3).map(s => s.channel.name)
   const list = names.length === 1 ? names[0]
     : names.length === 2 ? `${names[0]} and ${names[1]}`
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+
+  // A channel can't be starving and well-fed at once — only name a contrast when
+  // one genuinely exists. At the start of a window nothing has been fed yet.
+  const fed = [...states]
+    .filter(s => !starved.some(x => x.channel.id === s.channel.id))
+    .sort((a, b) => a.pressure - b.pressure)[0]
+
+  if (!fed) {
+    return {
+      balanced: false,
+      note: starved.length === states.length
+        ? 'Every channel is waiting for its first turn. That is just the start of a window, not a backlog. Take the one the app puts in front of you.'
+        : `${list} ${names.length === 1 ? 'is' : 'are'} running dry. One turn each is enough — this is not a heroic day.`
+    }
+  }
+
   return {
     balanced: false,
     note: `${list} ${names.length === 1 ? 'is' : 'are'} running dry while ${fed.channel.name} stays fed. That's the imbalance to correct — one turn each, not a heroic day.`
