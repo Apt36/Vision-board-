@@ -17,7 +17,9 @@ export default function Career() {
   const thisWeek = apps.filter(a => a.date >= weekStart).length
   const interviews = apps.filter(a => a.status === 'interview').length
   const followUps = apps.filter(a => a.status === 'follow-up').length
-  const realEstate = state.goals.find(g => g.id === 'g-realestate')
+  const buildingRooms = state.rooms.filter(
+    r => (r.domainId === 'career' || r.domainId === 'realestate') && r.status === 'active'
+  )
 
   const save = (a: JobApplication) => {
     setState(s => ({
@@ -67,26 +69,28 @@ export default function Career() {
           ))}
       </Card>
 
-      <Card title="Real estate licence">
-        {realEstate ? (
-          <div className="row" style={{ borderTop: 'none' }}>
+      <Card title="Building">
+        {buildingRooms.length === 0 ? (
+          <p className="empty">No career rooms yet. Add one from Rooms.</p>
+        ) : buildingRooms.map(r => (
+          <div key={r.id} className="row">
             <div>
-              <div className="row-label" style={{ fontWeight: 600 }}>{realEstate.name}</div>
+              <div className="row-label" style={{ fontWeight: 600 }}>
+                {r.name}{r.urgent && <span className="faint"> · pressing</span>}
+              </div>
               <div className="row-sub">
-                {realEstate.nextAction && `Next: ${realEstate.nextAction} · `}
-                {realEstate.lastWorkedOn ? `last studied ${formatShort(realEstate.lastWorkedOn)}` : 'no sessions logged yet'}
+                {r.nextAction && `Next: ${r.nextAction} · `}
+                {r.lastEntered ? `last ${formatShort(r.lastEntered)}` : 'not entered yet'}
               </div>
             </div>
             <button className="btn btn-sm" onClick={() => {
-              setState(s => ({ ...s, goals: s.goals.map(g => g.id === realEstate.id ? { ...g, lastWorkedOn: today } : g) }))
-              logActivity('realestate', 0.9, 'Real estate study block')
+              setState(s => ({ ...s, rooms: s.rooms.map(x => x.id === r.id ? { ...x, lastEntered: today } : x) }))
+              logActivity(r.domainId, 0.9, `${r.name} session`)
             }}>
-              {realEstate.lastWorkedOn === today ? '✓ today' : 'Studied'}
+              {r.lastEntered === today ? '✓ today' : 'Did it'}
             </button>
           </div>
-        ) : (
-          <p className="empty">Add a real estate goal in Goals &amp; Projects.</p>
-        )}
+        ))}
       </Card>
 
       {editing && (

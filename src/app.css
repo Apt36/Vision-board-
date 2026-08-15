@@ -291,3 +291,74 @@ input[type='range']::-moz-range-thumb { width: 26px; height: 26px; border-radius
 .note-quote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text-dim); line-height: 1.5; }
 .checkin-saved { color: var(--good); font-size: 0.85rem; }
 a { color: var(--blue); }
+
+/* ===== v2: rooms ===== */
+.room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 620px) { .room-grid { grid-template-columns: 1fr 1fr 1fr; } }
+.room-card {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  text-align: left; min-height: 108px; position: relative;
+}
+.room-card:active { background: var(--bg-inset); }
+.room-dot { width: 8px; height: 8px; border-radius: 50%; display: block; margin-bottom: 2px; }
+.room-name { font-weight: 650; line-height: 1.25; font-size: 0.98rem; }
+.room-meta { color: var(--text-faint); font-size: 0.78rem; margin-top: auto; }
+.room-badge {
+  font-size: 0.62rem; letter-spacing: 0.1em; font-weight: 800;
+  color: var(--text-faint); text-transform: uppercase;
+}
+.room-badge.due { color: var(--accent); }
+.room-badge.over { color: var(--warn); }
+.room-badge.urgent { color: var(--warn); }
+.room-intention { background: var(--bg-inset); border-left: 3px solid var(--accent); }
+
+/* ===== v2: anchors ===== */
+.anchor-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; padding: 7px 0; min-height: 44px;
+}
+.anchor-box {
+  width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--bg-inset);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; color: var(--text-dim);
+}
+.anchor-box.on { background: var(--accent); border-color: var(--accent); color: #1a1408; }
+.anchor-box.part { border-color: var(--accent); color: var(--accent); }
+.anchor-label { flex: 1; }
+.anchor-label.done { color: var(--text-faint); text-decoration: line-through; }
+.anchor-streak {
+  font-size: 0.72rem; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); padding: 2px 8px; border-radius: 999px;
+}
+
+/* ===== v2: monk ===== */
+.monk-card {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; text-align: left;
+}
+.monk-ring {
+  width: 62px; height: 62px; border-radius: 50%; flex-shrink: 0;
+  background: conic-gradient(var(--accent) var(--pct), var(--bg-inset) 0);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.monk-ring::before {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 50%; background: var(--bg-raised);
+}
+.monk-ring span {
+  position: relative; font-size: 0.8rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== v2: day dots ===== */
+.dot-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.day-dot {
+  width: 20px; height: 20px; border-radius: 6px;
+  background: var(--bg-inset); border: 1px solid var(--border);
+}
+.day-dot.on { background: var(--good); border-color: var(--good); }
+.day-dot.slip { background: var(--warn); border-color: var(--warn); }

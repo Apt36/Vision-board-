@@ -25,6 +25,7 @@ export default function Money() {
         monthlyTarget: num(form.monthlyTarget),
         extraIncomeGoal: num(form.extraIncomeGoal),
         extraIncomeEarned: num(form.extraIncomeEarned),
+        minimalSpendMonth: m.minimalSpendMonth,
         note: form.note
       }
     })

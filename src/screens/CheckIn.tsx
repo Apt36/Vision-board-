@@ -22,7 +22,6 @@ export default function CheckIn() {
   const saveTimer = useRef<number | undefined>(undefined)
   const info = dayInfo(state, today)
 
-  // Autosave (debounced) on every change after first edit.
   const update = (patch: Partial<DailyCheckin>) => {
     setC(prev => {
       const next = { ...prev, ...patch }
@@ -44,6 +43,8 @@ export default function CheckIn() {
     update({ french: { ...c.french, types, practiced: types.length > 0 || c.french.practiced } })
   }
 
+  const meals = [c.breakfast, c.lunch, c.dinner].filter(Boolean).length
+
   return (
     <div>
       <div className="brand">CHECK-IN</div>
@@ -57,80 +58,74 @@ export default function CheckIn() {
       <Card title="Sleep & energy">
         <div className="row" style={{ borderTop: 'none' }}>
           <div className="row-label">Sleep last night</div>
-          <Stepper
-            value={c.sleepHours ?? 7}
-            min={0} max={14} step={0.5}
-            format={v => `${v}h`}
-            onChange={v => update({ sleepHours: v })}
-          />
+          <Stepper value={c.sleepHours ?? 7} min={0} max={14} step={0.5}
+            format={v => `${v}h`} onChange={v => update({ sleepHours: v })} />
         </div>
-        {c.sleepHours == null && <p className="faint">Tap − / + to log sleep.</p>}
         <div style={{ marginTop: 14 }}>
           <label htmlFor="energy">Energy: <strong>{c.energy ?? '–'}</strong>/10</label>
-          <input
-            id="energy" type="range" min={1} max={10} step={1}
-            value={c.energy ?? 5}
-            onChange={e => update({ energy: Number(e.target.value) })}
-          />
+          <input id="energy" type="range" min={1} max={10} step={1}
+            value={c.energy ?? 5} onChange={e => update({ energy: Number(e.target.value) })} />
+        </div>
+      </Card>
+
+      <Card title={`Meals · ${meals}/3`}>
+        <p className="muted" style={{ marginBottom: 10 }}>
+          Breakfast is the one you have down. Lunch and dinner are the ones that decide whether you gain.
+        </p>
+        <div className="chip-row">
+          <Chip on={c.breakfast} onClick={() => update({ breakfast: !c.breakfast })}>Breakfast</Chip>
+          <Chip on={c.lunch} onClick={() => update({ lunch: !c.lunch })}>Lunch</Chip>
+          <Chip on={c.dinner} onClick={() => update({ dinner: !c.dinner })}>Dinner</Chip>
         </div>
       </Card>
 
       <Card title="Body">
         <div className="row" style={{ borderTop: 'none' }}>
           <div>
-            <div className="row-label">Meals today</div>
-            <div className="row-sub">Real meals — you're gaining weight</div>
+            <div className="row-label">Pushups</div>
+            <div className="row-sub">Target is 60 in the morning</div>
           </div>
-          <Stepper value={c.meals} min={0} max={8} onChange={v => update({ meals: v })} />
+          <Stepper value={c.pushups} min={0} max={300} step={10} onChange={v => update({ pushups: v })} />
         </div>
-        <SwitchRow label="Exercise" sub="Any deliberate movement counts" on={c.exercised} onChange={v => update({ exercised: v })} />
+        <SwitchRow label="Other exercise" sub="Anything deliberate beyond pushups"
+          on={c.exercised} onChange={v => update({ exercised: v })} />
         {c.exercised && (
           <div className="field" style={{ marginTop: 10 }}>
-            <input
-              placeholder="What did you do? (optional)"
-              value={c.exerciseNote}
-              onChange={e => update({ exerciseNote: e.target.value })}
-            />
+            <input placeholder="What did you do? (optional)" value={c.exerciseNote}
+              onChange={e => update({ exerciseNote: e.target.value })} />
           </div>
         )}
         <div className="row">
           <div className="row-label">Steps <span className="faint">(optional)</span></div>
-          <input
-            type="number" inputMode="numeric" placeholder="—" style={{ width: 110, textAlign: 'right' }}
+          <input type="number" inputMode="numeric" placeholder="—" style={{ width: 110, textAlign: 'right' }}
             value={c.steps ?? ''}
-            onChange={e => update({ steps: e.target.value === '' ? null : Number(e.target.value) })}
-          />
+            onChange={e => update({ steps: e.target.value === '' ? null : Number(e.target.value) })} />
         </div>
         <div className="row">
-          <div className="row-label">Weight <span className="faint">(optional, {state.settings.weightUnit})</span></div>
-          <input
-            type="number" inputMode="decimal" placeholder="—" style={{ width: 110, textAlign: 'right' }}
+          <div className="row-label">Weight <span className="faint">({state.settings.weightUnit})</span></div>
+          <input type="number" inputMode="decimal" placeholder="—" style={{ width: 110, textAlign: 'right' }}
             value={c.weight ?? ''}
-            onChange={e => update({ weight: e.target.value === '' ? null : Number(e.target.value) })}
-          />
+            onChange={e => update({ weight: e.target.value === '' ? null : Number(e.target.value) })} />
         </div>
       </Card>
 
       <Card title="French">
-        <SwitchRow
-          label="Practiced French" sub={c.french.minutes ? `${c.french.minutes} min` : undefined}
+        <SwitchRow label="Practiced French" sub={c.french.minutes ? `${c.french.minutes} min` : undefined}
           on={c.french.practiced}
-          onChange={v => update({ french: { ...c.french, practiced: v, types: v ? c.french.types : [], minutes: v ? c.french.minutes : 0 } })}
-        />
+          onChange={v => update({ french: { ...c.french, practiced: v, types: v ? c.french.types : [], minutes: v ? c.french.minutes : 0 } })} />
         {c.french.practiced && (
           <>
             <div className="row">
               <div className="row-label">Minutes</div>
-              <Stepper value={c.french.minutes} min={0} max={180} step={5} onChange={v => update({ french: { ...c.french, minutes: v } })} />
+              <Stepper value={c.french.minutes} min={0} max={180} step={5}
+                onChange={v => update({ french: { ...c.french, minutes: v } })} />
             </div>
-            <div style={{ marginTop: 12 }}>
-              <div className="chip-row">
-                {FRENCH_TYPES.map(t => (
-                  <Chip key={t.id} on={c.french.types.includes(t.id)} onClick={() => toggleFrenchType(t.id)}>
-                    {t.label}
-                  </Chip>
-                ))}
-              </div>
+            <div className="chip-row" style={{ marginTop: 12 }}>
+              {FRENCH_TYPES.map(t => (
+                <Chip key={t.id} on={c.french.types.includes(t.id)} onClick={() => toggleFrenchType(t.id)}>
+                  {t.label}
+                </Chip>
+              ))}
             </div>
           </>
         )}
@@ -139,8 +134,8 @@ export default function CheckIn() {
       <Card title="Mind & work">
         <SwitchRow label="Reading" on={c.reading} onChange={v => update({ reading: v })} />
         <SwitchRow label="Reflection / mental reset" on={c.mind} onChange={v => update({ mind: v })} />
-        <SwitchRow label="Career work" sub="Applications, studying, development" on={c.career} onChange={v => update({ career: v })} />
-        <SwitchRow label="Creative work" sub="Filming, editing, music, content" on={c.creative} onChange={v => update({ creative: v })} />
+        <SwitchRow label="Career work" sub="Licence, applications, studying" on={c.career} onChange={v => update({ career: v })} />
+        <SwitchRow label="Creative work" sub="Filming, editing, podcast, music" on={c.creative} onChange={v => update({ creative: v })} />
       </Card>
 
       <Card title="Connection">
@@ -153,11 +148,8 @@ export default function CheckIn() {
       </Card>
 
       <Card title="Notes">
-        <textarea
-          placeholder="Anything worth remembering about today…"
-          value={c.notes}
-          onChange={e => update({ notes: e.target.value })}
-        />
+        <textarea placeholder="Anything worth remembering about today…"
+          value={c.notes} onChange={e => update({ notes: e.target.value })} />
       </Card>
 
       <p className="faint" style={{ textAlign: 'center', marginBottom: 8 }}>
