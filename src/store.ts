@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react'
 import type {
-  AppState, Cadence, Challenge, Commitment, DailyCheckin, LifeDomain,
-  Room, Routine, UserSettings, WorkSchedule
+  AppState, Cadence, Challenge, Channel, Commitment, DailyCheckin, LifeDomain,
+  Room, Routine, UserSettings, Window60, WorkSchedule
 } from './types'
 import { todayISO } from './logic/date'
 
 const STORAGE_KEY = 'matt-os-state-v1'
-const VERSION = 2
+const VERSION = 3
 
 // ===== Defaults / seed =====
 
@@ -49,7 +49,8 @@ export const defaultDomains: LifeDomain[] = [
   { id: 'money', name: 'Money', color: '#8fc9b8', builtin: true, weeklyTarget: 1.5 },
   { id: 'creative', name: 'Creative', color: '#d9b48f', builtin: true, weeklyTarget: 3.5 },
   { id: 'style', name: 'Style', color: '#b8a7c9', builtin: true, weeklyTarget: 2.5 },
-  { id: 'projects', name: 'Projects', color: '#8fa7b8', builtin: true, weeklyTarget: 1.5 }
+  { id: 'projects', name: 'Projects', color: '#8fa7b8', builtin: true, weeklyTarget: 1.5 },
+  { id: 'home', name: 'Home', color: '#8fbfa7', builtin: true, weeklyTarget: 2 }
 ]
 
 export const CADENCE_DAYS: Record<Cadence, number | null> = {
@@ -125,6 +126,9 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-monk', name: 'Monk', domainId: 'mind', cadence: 'daily', status: 'active', urgent: false, feature: 'monk',
     intention: '60 days, no vices. You will be tempted. You are thinking bigger picture — and discipline is the whole point.',
     nextAction: 'Stay clean today' },
+  { id: 'r-plants', name: 'Plants', domainId: 'home', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'Living things in your space that only do well if you show up. Low effort, high signal — a room that tells the truth about how the rest of the weeks are going.',
+    nextAction: 'Water, turn, check the leaves' },
   { id: 'r-accora', name: 'Accora Brain', domainId: 'projects', cadence: 'as-needed', status: 'maintenance', urgent: false, feature: null,
     intention: 'Stable. Capture ideas and bugs only. You have poured enough of yourself into it for now.',
     nextAction: 'Capture ideas. Do not develop.' }
@@ -151,6 +155,44 @@ const defaultChallenge: Challenge = {
   startDate: null,
   active: false,
   bestRun: 0
+}
+
+
+// ===== Channels — the network of focus =====
+// Colours are the validated dark categorical palette (8 slots, one per channel):
+// worst adjacent CVD dE 8.4, normal-vision floor 19.3, all >= 3:1 on the surface.
+// Channel identity is always carried by its name as well as its colour.
+const channelSeeds: Channel[] = [
+  { id: 'ch-body', name: 'THE BODY', tagline: 'Build the frame. Eat, move, recover.',
+    color: '#199e70', weight: 5, order: 1,
+    roomIds: ['r-movement', 'r-eat', 'r-doctor'] },
+  { id: 'ch-build', name: 'THE BUILD', tagline: 'Options, licence, income. The future you are owed.',
+    color: '#3987e5', weight: 5, order: 2,
+    roomIds: ['r-license', 'r-realtor', 'r-rentals', 'r-money', 'r-accora'] },
+  { id: 'ch-truce', name: 'TRUCE', tagline: 'The channel. Film it, cut it, publish it.',
+    color: '#d95926', weight: 4, order: 3,
+    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast'] },
+  { id: 'ch-mind', name: 'THE MIND', tagline: 'Read, reflect, stay clean, stay honest.',
+    color: '#9085e9', weight: 4, order: 4,
+    roomIds: ['r-reading', 'r-therapy', 'r-identity', 'r-monk'] },
+  { id: 'ch-people', name: 'THE PEOPLE', tagline: 'The ones who are still there when the projects stall.',
+    color: '#d55181', weight: 4, order: 5,
+    roomIds: ['r-people'] },
+  { id: 'ch-tongue', name: 'THE TONGUE', tagline: 'French. Small and every day.',
+    color: '#c98500', weight: 3, order: 6,
+    roomIds: ['r-french'] },
+  { id: 'ch-surface', name: 'THE SURFACE', tagline: 'How you show up. Grooming, skin, teeth, dress.',
+    color: '#e66767', weight: 2, order: 7,
+    roomIds: ['r-grooming', 'r-maintenance', 'r-style'] },
+  { id: 'ch-home', name: 'THE HOME', tagline: 'The space you live in. Plants, art, records.',
+    color: '#008300', weight: 2, order: 8,
+    roomIds: ['r-plants', 'r-frames', 'r-vinyl'] }
+]
+
+const defaultWindow: Window60 = {
+  number: 2, startDate: null as unknown as string, days: 60,
+  intention: 'Second window. Nurture everything — let nothing starve.',
+  active: false
 }
 
 const defaultRoutine: Routine = {
@@ -215,7 +257,11 @@ function initialState(): AppState {
     jobApps: [],
     therapy: [],
     activity: [],
-    anchorChecks: {}
+    anchorChecks: {},
+    channels: channelSeeds,
+    window: { ...defaultWindow, startDate: todayISO(), active: true },
+    windowReviews: [],
+    assignments: {}
   }
 }
 
@@ -277,6 +323,20 @@ function migrate(parsed: any): AppState {
     }
   }
   next.checkins = checkins
+
+  // v3: channels, the 60-day window, the Plants room and the Home domain
+  if (!Array.isArray(parsed.channels) || parsed.channels.length === 0) next.channels = channelSeeds
+  if (!next.domains.some(d => d.id === 'home')) {
+    next.domains = [...next.domains, { id: 'home', name: 'Home', color: '#8fbfa7', builtin: true, weeklyTarget: 2 }]
+  }
+  for (const seedRoom of base.rooms) {
+    if (!next.rooms.some(r => r.id === seedRoom.id)) next.rooms = [...next.rooms, seedRoom]
+  }
+  next.window = parsed.window?.startDate
+    ? { ...defaultWindow, ...parsed.window }
+    : { ...defaultWindow, startDate: todayISO(), active: true }
+  next.windowReviews = parsed.windowReviews ?? []
+  next.assignments = parsed.assignments ?? {}
 
   delete (next as any).goals
   delete (next as any).projectNotes

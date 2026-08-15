@@ -243,4 +243,46 @@ export interface AppState {
   therapy: TherapySession[]
   activity: ActivityEvent[]
   anchorChecks: Record<string, string[]>
+  channels: Channel[]
+  window: Window60
+  windowReviews: WindowReview[]
+  assignments: Record<string, Assignment>
+}
+
+// ===== Channels — the network of focus =====
+
+export interface Channel {
+  id: string
+  name: string
+  tagline: string
+  color: string
+  roomIds: string[]
+  /** 1–5. Higher = deserves turns more often. */
+  weight: number
+  order: number
+}
+
+/** A 60-day window of progression. */
+export interface Window60 {
+  number: number
+  startDate: string
+  days: number
+  intention: string
+  active: boolean
+}
+
+export interface WindowReview {
+  windowNumber: number
+  date: string
+  kept: string
+  dropped: string
+  next: string
+}
+
+/** What the app tells him to do today. */
+export interface Assignment {
+  date: string
+  channelId: string
+  roomIds: string[]
+  accepted: boolean
 }

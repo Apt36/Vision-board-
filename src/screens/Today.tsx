@@ -5,6 +5,7 @@ import { capacityFor, dayInfo } from '../logic/capacity'
 import { computeAttention, steeringNote } from '../logic/attention'
 import { todayPlan, whatShouldIDo, currentWeekPriorities, unusedFootage } from '../logic/recommend'
 import { roomsForToday } from '../logic/rooms'
+import { todaysAssignment, windowState, channelStates, networkBalance } from '../logic/channels'
 import { challengeState, commitmentStreak, isCommitmentDone } from '../logic/streaks'
 import { Card, RadarBars, Sheet } from '../components/ui'
 import type { Route } from '../App'
@@ -28,6 +29,9 @@ export default function Today({ go, openRoom }: { go: (r: Route) => void; openRo
   const plan = useMemo(() => todayPlan(state, today), [state, today])
   const rooms = useMemo(() => roomsForToday(state, today), [state, today])
   const cs = challengeState(state, today)
+  const win = windowState(state, today)
+  const assignment = useMemo(() => todaysAssignment(state, today), [state, today])
+  const balance = networkBalance(useMemo(() => channelStates(state, today), [state, today]))
   const checkin = state.checkins[today]
   const protectedIds = currentWeekPriorities(state, today)
   const unused = unusedFootage(state)
@@ -54,6 +58,48 @@ export default function Today({ go, openRoom }: { go: (r: Route) => void; openRo
         {info.isWorkDay && <span className="pill pill-dim">{info.label}</span>}
         {info.earlyStart && <span className="pill pill-dim">early start</span>}
       </div>
+
+      <button className="window-strip" onClick={() => go('window')}>
+        <span className="window-strip-label">
+          WINDOW {String(win.number).padStart(2, '0')} · DAY {win.day}
+          <span className="faint"> / {win.days}</span>
+        </span>
+        <span className="window-strip-bar">
+          <span style={{ width: `${win.percent}%` }} />
+        </span>
+      </button>
+
+      {assignment && (
+        <section className="assign" style={{ ['--ch' as string]: assignment.channel.color }}>
+          <div className="assign-head">
+            <span className="assign-kicker">ON AIR TODAY</span>
+            <span className="assign-mins">{assignment.totalMinutes} min</span>
+          </div>
+          <h2 className="assign-channel">{assignment.channel.name}</h2>
+          <p className="assign-tag">{assignment.channel.tagline}</p>
+          <ol className="assign-list">
+            {assignment.rooms.map((a, i) => (
+              <li key={a.room.id}>
+                <button onClick={() => openRoom(a.room.id)}>
+                  <span className="assign-num">{i + 1}</span>
+                  <span className="assign-room">
+                    <strong>{a.room.name}</strong>
+                    <span className="assign-next">{a.room.nextAction || 'Give it a real turn'}</span>
+                  </span>
+                  <span className="assign-time">{a.minutes}m</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          {assignment.keepAlive && (
+            <button className="assign-keep" onClick={() => openRoom(assignment.keepAlive!.room.id)}>
+              Keep alive · <strong>{assignment.keepAlive.room.name}</strong>
+              <span className="faint"> ({assignment.keepAlive.channel.name}) ›</span>
+            </button>
+          )}
+          <p className="assign-why">{assignment.why}</p>
+        </section>
+      )}
 
       {cs.active && (
         <button className="card monk-card" onClick={() => go('monk')}>
@@ -121,7 +167,14 @@ export default function Today({ go, openRoom }: { go: (r: Route) => void; openRo
         )}
       </Card>
 
-      <Card title="Rooms that need a turn">
+      <Card title="Network balance">
+        <p className="steering">{balance.note}</p>
+        <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => go('network')}>
+          Open the network
+        </button>
+      </Card>
+
+      <Card title="Also open">
         {rooms.length === 0 ? (
           <p className="empty">Every room has had its turn recently. Rest is the right move.</p>
         ) : rooms.map(c => {

@@ -3,6 +3,7 @@ const BASE='http://localhost:4173/Vision-board-/'
 let f=0; const ok=(n,c,e='')=>{ if(c) console.log(`  ✓ ${n}`); else {f++;console.log(`  ✗ FAIL ${n} ${e}`)} }
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox']})
 const p=await (await b.newContext({viewport:{width:390,height:844}})).newPage()
+const p2=p
 const errs=[]; p.on('pageerror',e=>errs.push(String(e)))
 
 // Seed a realistic v1 state, as it would exist on the phone right now.
@@ -29,7 +30,7 @@ await p.waitForTimeout(500)
 const s=await p.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
 console.log('Migration v1 -> v2')
 ok('app still renders', await p.getByText('MATT OS').first().isVisible())
-ok('version bumped', s.version===2, s.version)
+ok('version bumped', s.version===3, s.version)
 ok('check-in preserved', !!s.checkins['2026-08-13'])
 const c=s.checkins['2026-08-13']
 ok('meals=2 became breakfast+lunch', c.breakfast===true&&c.lunch===true&&c.dinner===false, JSON.stringify({b:c.breakfast,l:c.lunch,d:c.dinner}))
@@ -57,6 +58,42 @@ ok('no page errors', errs.length===0, JSON.stringify(errs.slice(0,2)))
 await p.reload({waitUntil:'networkidle'}); await p.waitForTimeout(400)
 const s2=await p.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
 ok('migration idempotent', s2.rooms.length===s.rooms.length && !!s2.checkins['2026-08-13'], `${s2.rooms.length} vs ${s.rooms.length}`)
+
+// ---- v2 -> v3: a real in-use v2 install must gain channels/window losslessly ----
+console.log('\nMigration v2 -> v3')
+const v2 = JSON.parse(JSON.stringify(s2))
+v2.version = 2
+delete v2.channels; delete v2.window; delete v2.windowReviews; delete v2.assignments
+v2.rooms = v2.rooms.filter(r => r.id !== 'r-plants')
+v2.domains = v2.domains.filter(d => d.id !== 'home')
+v2.roomSessions = [{id:'rs1',roomId:'r-french',date:'2026-08-14',minutes:20,note:'duo',filmed:true}]
+v2.commitmentLog = {'2026-08-14':{'c-pushups':1,'c-teeth':2}}
+v2.challenge = {id:'monk',name:'Monk',vices:['Weed'],targetDays:60,startDate:'2026-08-14',active:true,bestRun:0}
+v2.challengeLog = {'2026-08-14':true}
+v2.collection = [{id:'c1',collection:'art',title:'Basquiat',maker:'JMB',status:'framed',notes:'',cost:null,date:'2026-08-14'}]
+v2.edits = [{id:'e1',date:'2026-08-14',title:'wk',minutes:40,clipIds:[],published:false,note:''}]
+await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v2)
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
+const s3=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('v3 version', s3.version===3, s3.version)
+ok('app renders after v3 migrate', await p2.getByText('MATT OS').first().isVisible())
+ok('channels added', s3.channels?.length===8, s3.channels?.length)
+ok('window started', !!s3.window?.startDate && s3.window.number===2)
+ok('plants room added', s3.rooms.some(r=>r.id==='r-plants'))
+ok('home domain added', s3.domains.some(d=>d.id==='home'))
+ok('room sessions kept', s3.roomSessions.length===1 && s3.roomSessions[0].filmed===true)
+ok('commitment log kept', s3.commitmentLog['2026-08-14']['c-teeth']===2)
+ok('monk challenge kept', s3.challenge.active===true && s3.challenge.startDate==='2026-08-14')
+ok('challenge log kept', s3.challengeLog['2026-08-14']===true)
+ok('collection kept', s3.collection.length===1 && s3.collection[0].status==='framed')
+ok('edits kept', s3.edits.length===1)
+ok('checkin still there', !!s3.checkins['2026-08-13'])
+ok('custom room still there', s3.rooms.some(r=>r.id==='custom123'))
+ok('every channel room resolves', s3.channels.every(c=>c.roomIds.every(id=>s3.rooms.some(r=>r.id===id))),
+   JSON.stringify(s3.channels.flatMap(c=>c.roomIds.filter(id=>!s3.rooms.some(r=>r.id===id)))))
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(400)
+const s4=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('v3 idempotent', s4.channels.length===8 && s4.rooms.length===s3.rooms.length && s4.window.number===2)
 
 await b.close()
 console.log(f===0?'\nMIGRATION SAFE':`\n${f} FAILURES`)

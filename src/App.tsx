@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import Today from './screens/Today'
 import CheckIn from './screens/CheckIn'
 import Rooms from './screens/Rooms'
+import Network from './screens/Network'
+import ChannelScreen from './screens/ChannelScreen'
+import WindowScreen from './screens/WindowScreen'
 import RoomScreen from './screens/Room'
 import Capture from './screens/Capture'
 import Week from './screens/Week'
@@ -18,23 +21,24 @@ import Routines from './screens/Routines'
 import Settings from './screens/Settings'
 
 export type Route =
-  | 'today' | 'rooms' | 'capture' | 'week' | 'more' | 'checkin'
+  | 'today' | 'network' | 'rooms' | 'capture' | 'week' | 'more' | 'checkin' | 'window'
   | 'monk' | 'collections' | 'wishlist'
   | 'body' | 'career' | 'french' | 'money' | 'mind' | 'routines' | 'settings'
 
 const ROUTES: Route[] = [
-  'today', 'rooms', 'capture', 'week', 'more', 'checkin',
+  'today', 'network', 'rooms', 'capture', 'week', 'more', 'checkin', 'window',
   'monk', 'collections', 'wishlist',
   'body', 'career', 'french', 'money', 'mind', 'routines', 'settings'
 ]
 
-interface Loc { route: Route; roomId: string | null }
+interface Loc { route: Route; roomId: string | null; channelId: string | null }
 
 function parseHash(): Loc {
   const raw = window.location.hash.replace(/^#\/?/, '')
   const [head, param] = raw.split('/')
-  if (head === 'room' && param) return { route: 'rooms', roomId: decodeURIComponent(param) }
-  return { route: (ROUTES as string[]).includes(head) ? (head as Route) : 'today', roomId: null }
+  if (head === 'room' && param) return { route: 'rooms', roomId: decodeURIComponent(param), channelId: null }
+  if (head === 'channel' && param) return { route: 'network', roomId: null, channelId: decodeURIComponent(param) }
+  return { route: (ROUTES as string[]).includes(head) ? (head as Route) : 'today', roomId: null, channelId: null }
 }
 
 const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
@@ -43,7 +47,7 @@ const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" strokeLinecap="round" /></svg>
   },
   {
-    route: 'rooms', label: 'Rooms',
+    route: 'network', label: 'Network',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="2" /><rect x="13.5" y="3.5" width="7" height="7" rx="2" /><rect x="3.5" y="13.5" width="7" height="7" rx="2" /><rect x="13.5" y="13.5" width="7" height="7" rx="2" /></svg>
   },
   {
@@ -63,7 +67,7 @@ const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
 const SUBSCREEN_PARENT: Partial<Record<Route, Route>> = {
   monk: 'more', collections: 'more', wishlist: 'more', body: 'more', career: 'more',
   french: 'more', money: 'more', mind: 'more', routines: 'more', settings: 'more',
-  checkin: 'today'
+  checkin: 'today', window: 'today', rooms: 'network'
 }
 
 export default function App() {
@@ -82,14 +86,19 @@ export default function App() {
   }
   const go = (r: Route) => navigate(`/${r}`)
   const openRoom = (id: string) => navigate(`/room/${encodeURIComponent(id)}`)
+  const openChannel = (id: string) => navigate(`/channel/${encodeURIComponent(id)}`)
 
   let screen: JSX.Element
   if (loc.roomId) {
     screen = <RoomScreen roomId={loc.roomId} go={go} back={() => go('rooms')} />
+  } else if (loc.channelId) {
+    screen = <ChannelScreen channelId={loc.channelId} openRoom={openRoom} back={() => go('network')} />
   } else {
     const screens: Record<Route, JSX.Element> = {
       today: <Today go={go} openRoom={openRoom} />,
+      network: <Network openChannel={openChannel} />,
       rooms: <Rooms open={openRoom} />,
+      window: <WindowScreen />,
       capture: <Capture />,
       week: <Week />,
       more: <More go={go} />,
@@ -108,15 +117,15 @@ export default function App() {
     screen = screens[loc.route]
   }
 
-  const activeTab = loc.roomId ? 'rooms' : (SUBSCREEN_PARENT[loc.route] ?? loc.route)
-  const parent = !loc.roomId ? SUBSCREEN_PARENT[loc.route] : undefined
+  const activeTab = (loc.roomId || loc.channelId) ? 'network' : (SUBSCREEN_PARENT[loc.route] ?? loc.route)
+  const parent = (!loc.roomId && !loc.channelId) ? SUBSCREEN_PARENT[loc.route] : undefined
 
   return (
     <>
       <main className="app">
         {parent && (
           <button className="btn btn-sm" style={{ marginBottom: 12 }} onClick={() => go(parent)}>
-            ← {parent === 'today' ? 'Today' : 'Life'}
+            ← {parent === 'today' ? 'Today' : parent === 'network' ? 'Network' : 'Life'}
           </button>
         )}
         {screen}

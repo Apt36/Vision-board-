@@ -362,3 +362,111 @@ a { color: var(--blue); }
 }
 .day-dot.on { background: var(--good); border-color: var(--good); }
 .day-dot.slip { background: var(--warn); border-color: var(--warn); }
+
+/* ===== v3: window strip ===== */
+.window-strip {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 9px 16px; margin-bottom: 14px; min-height: 44px;
+}
+.window-strip-label {
+  font-size: 0.7rem; letter-spacing: 0.14em; font-weight: 800;
+  color: var(--text-dim); white-space: nowrap;
+}
+.window-strip-bar {
+  flex: 1; height: 5px; border-radius: 999px; background: var(--border); overflow: hidden;
+}
+.window-strip-bar > span {
+  display: block; height: 100%; background: var(--accent); border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+/* ===== v3: today's assignment ===== */
+.assign {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ch);
+  border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px;
+}
+.assign-head { display: flex; justify-content: space-between; align-items: baseline; }
+.assign-kicker {
+  font-size: 0.68rem; letter-spacing: 0.18em; font-weight: 800; color: var(--ch);
+}
+.assign-mins { font-size: 0.78rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.assign-channel { font-size: 1.5rem; margin: 6px 0 2px; letter-spacing: 0.01em; }
+.assign-tag { color: var(--text-dim); font-size: 0.9rem; line-height: 1.4; margin-bottom: 12px; }
+.assign-list { list-style: none; }
+.assign-list li + li { border-top: 1px solid var(--border); }
+.assign-list button {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; padding: 11px 0; min-height: 52px;
+}
+.assign-num {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+  background: var(--ch); color: #0e1117;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 800;
+}
+.assign-room { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.assign-room strong { font-weight: 650; }
+.assign-next { font-size: 0.82rem; color: var(--text-dim); line-height: 1.35; }
+.assign-time {
+  font-size: 0.8rem; color: var(--text-faint); font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.assign-keep {
+  width: 100%; text-align: left; margin-top: 10px; padding: 9px 12px;
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 10px; font-size: 0.86rem; color: var(--text-dim); min-height: 44px;
+}
+.assign-why {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 0.84rem; color: var(--text-faint); line-height: 1.5;
+}
+
+/* ===== v3: channel cards ===== */
+.channel-card {
+  display: flex; gap: 0; width: 100%; text-align: left;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
+}
+.channel-card:active { background: var(--bg-inset); }
+.channel-stripe { width: 4px; flex-shrink: 0; }
+.channel-body { flex: 1; padding: 13px 14px; display: flex; flex-direction: column; gap: 5px; }
+.channel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.channel-name { font-weight: 750; letter-spacing: 0.06em; font-size: 0.94rem; }
+.channel-state {
+  font-size: 0.6rem; letter-spacing: 0.1em; font-weight: 800;
+  color: var(--text-faint); flex-shrink: 0;
+}
+.channel-state.owed { color: var(--accent); }
+.channel-tag { font-size: 0.82rem; color: var(--text-dim); line-height: 1.35; }
+.channel-meta { font-size: 0.74rem; color: var(--text-faint); }
+
+/* shared meter: 2px surface gap keeps the fill off the track edge */
+.meter {
+  display: block; height: 6px; border-radius: 999px;
+  background: var(--bg-inset); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.meter-fill { display: block; height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+
+/* ===== v3: window ring + equity ===== */
+.window-hero { display: flex; align-items: center; gap: 20px; }
+.window-ring {
+  width: 108px; height: 108px; border-radius: 50%; flex-shrink: 0; position: relative;
+  background: conic-gradient(var(--accent) var(--pct), var(--bg-inset) 0);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.window-ring::before {
+  content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--bg-raised);
+}
+.window-day {
+  position: relative; font-size: 2.1rem; font-weight: 750;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.window-of { position: relative; font-size: 0.72rem; color: var(--text-faint); margin-top: 2px; }
+
+.equity-row { display: grid; grid-template-columns: 108px 1fr 26px; align-items: center; gap: 10px; padding: 5px 0; }
+.equity-name { font-size: 0.76rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text-dim); }
+.equity-val { font-size: 0.82rem; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
