@@ -7,7 +7,7 @@ import { todayISO } from './logic/date'
 import { todaysAssignment } from './logic/channels'
 
 const STORAGE_KEY = 'matt-os-state-v1'
-const VERSION = 5
+const VERSION = 6
 
 // ===== Defaults / seed =====
 
@@ -118,6 +118,9 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-money', name: 'Finances & Saving', domainId: 'money', cadence: 'weekly', status: 'active', urgent: false, feature: 'money',
     intention: 'A minimal-spending month. Tools motivate you — but the right tool at the wrong time is just a purchase.',
     nextAction: 'Check the numbers, buy nothing' },
+  { id: 'r-sidemoney', name: 'Side Money', domainId: 'money', cadence: 'weekly', status: 'active', urgent: false, feature: 'money',
+    intention: 'Profit outside the paycheque. Commissions, apps, content, flips — name the play, run it, log what it actually brought in.',
+    nextAction: "Name this month's side-money play" },
   { id: 'r-rentals', name: 'Rentals & Commission', domainId: 'career', cadence: 'weekly', status: 'active', urgent: false, feature: 'career',
     intention: 'Part-time income. Do the job well and the commission follows.',
     nextAction: 'Follow up on an active lead' },
@@ -142,6 +145,12 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-plants', name: 'Plants', domainId: 'home', cadence: 'weekly', status: 'active', urgent: false, feature: null,
     intention: 'Living things in your space that only do well if you show up. Low effort, high signal — a room that tells the truth about how the rest of the weeks are going.',
     nextAction: 'Water, turn, check the leaves' },
+  { id: 'r-apps', name: 'App Building', domainId: 'projects', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'Yayo Thru Time, Apply Mate, Accora Brain — that is already a portfolio. Building with Claude is a craft you are sharpening; the shelf is not a graveyard, it is a catalogue. One app in front at a time.',
+    nextAction: 'One focused block on the app in front' },
+  { id: 'r-audience', name: 'Audience', domainId: 'creative', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'The archive stays private — this is the public lane. An audience is grown, not found: small and consistent. When something in the vault deserves daylight, it goes through here.',
+    nextAction: 'Post one small thing, anywhere' },
   { id: 'r-accora', name: 'Accora Brain', domainId: 'projects', cadence: 'as-needed', status: 'maintenance', urgent: false, feature: null,
     intention: 'Stable. Capture ideas and bugs only. You have poured enough of yourself into it for now.',
     nextAction: 'Capture ideas. Do not develop.' }
@@ -179,12 +188,12 @@ const channelSeeds: Channel[] = [
   { id: 'ch-body', name: 'THE BODY', tagline: 'Build the frame. Eat, move, recover.',
     color: '#199e70', weight: 5, order: 1,
     roomIds: ['r-movement', 'r-eat', 'r-doctor'] },
-  { id: 'ch-build', name: 'THE BUILD', tagline: 'Options, licence, income. The future you are owed.',
+  { id: 'ch-build', name: 'THE BUILD', tagline: 'Options, licence, income, apps. The future you are owed.',
     color: '#3987e5', weight: 5, order: 2,
-    roomIds: ['r-license', 'r-realtor', 'r-rentals', 'r-money', 'r-accora'] },
+    roomIds: ['r-license', 'r-realtor', 'r-rentals', 'r-money', 'r-sidemoney', 'r-apps', 'r-accora'] },
   { id: 'ch-truce', name: 'TRUCE', tagline: 'The archive. Film it, cut it, record it — track the evolution.',
     color: '#d95926', weight: 4, order: 3,
-    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast', 'r-pod-ent', 'r-music', 'r-longgame'] },
+    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast', 'r-pod-ent', 'r-music', 'r-audience', 'r-longgame'] },
   { id: 'ch-mind', name: 'THE MIND', tagline: 'Read, reflect, stay clean, stay honest.',
     color: '#9085e9', weight: 4, order: 4,
     roomIds: ['r-reading', 'r-therapy', 'r-journal', 'r-identity', 'r-monk'] },
