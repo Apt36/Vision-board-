@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react'
 import { setState, uid, useAppState } from '../store'
 import { todayISO, formatShort, addDays } from '../logic/date'
 import { channelStates, windowState } from '../logic/channels'
+import { friendlyName } from '../logic/plan'
 import { challengeState } from '../logic/streaks'
 import { Card } from '../components/ui'
+
+const MAX_FOCUS = 4
 
 export default function WindowScreen() {
   const state = useAppState()
@@ -30,6 +33,30 @@ export default function WindowScreen() {
     setSaved(true)
     window.setTimeout(() => setSaved(false), 1500)
   }
+
+  const focusIds = state.window.focusRoomIds ?? []
+  const toggleFocus = (id: string) => {
+    setState(s => {
+      const cur = s.window.focusRoomIds ?? []
+      const next = cur.includes(id) ? cur.filter(x => x !== id)
+        : cur.length >= MAX_FOCUS ? cur : [...cur, id]
+      return { ...s, window: { ...s.window, focusRoomIds: next } }
+    })
+  }
+
+  const dialGroups = useMemo(() => {
+    const channels = [...state.channels].sort((a, b) => a.order - b.order)
+    const grouped = channels.map(ch => ({
+      key: ch.id, name: friendlyName(ch.name), color: ch.color,
+      rooms: ch.roomIds
+        .map(id => state.rooms.find(r => r.id === id))
+        .filter(r => r && r.status === 'active') as { id: string; name: string }[]
+    }))
+    const inChannel = new Set(channels.flatMap(c => c.roomIds))
+    const loose = state.rooms.filter(r => r.status === 'active' && !inChannel.has(r.id))
+    if (loose.length) grouped.push({ key: 'loose', name: 'More', color: 'var(--text-dim)', rooms: loose })
+    return grouped.filter(g => g.rooms.length > 0)
+  }, [state.channels, state.rooms])
 
   const closeWindow = () => {
     setState(s => ({
@@ -82,6 +109,34 @@ export default function WindowScreen() {
         <button className="btn btn-accent btn-block" style={{ marginTop: 10 }} onClick={saveIntention}>
           {saved ? '✓ Saved' : 'Save intention'}
         </button>
+      </Card>
+
+      <Card title="The season dial">
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Every window is a season. Turn the dial toward up to {MAX_FOCUS} rooms — they get first
+          claim on your days for these 60 days. Everything else keeps simmering in the
+          rotation; a season shifts weight, it never mutes anything.
+        </p>
+        {dialGroups.map(g => (
+          <div key={g.key} style={{ marginBottom: 12 }}>
+            <div className="stat-label" style={{ color: g.color, marginBottom: 6 }}>{g.name}</div>
+            <div className="chip-row">
+              {g.rooms.map(r => (
+                <button key={r.id} className={`chip ${focusIds.includes(r.id) ? 'on' : ''}`}
+                  onClick={() => toggleFocus(r.id)}>
+                  {focusIds.includes(r.id) ? '◉ ' : ''}{r.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <p className="faint">
+          {focusIds.length === 0
+            ? 'No dial set — pure rotation, every room takes equal turns.'
+            : focusIds.length >= MAX_FOCUS
+              ? `${MAX_FOCUS} of ${MAX_FOCUS} — that's the cap. A season with ten focuses isn't a season.`
+              : `${focusIds.length} of ${MAX_FOCUS} dial slots used. Saved automatically.`}
+        </p>
       </Card>
 
       <Card title="What this window has held">
@@ -144,6 +199,9 @@ export default function WindowScreen() {
           <button className="btn btn-accent btn-block" onClick={closeWindow}>
             Close Window {String(win.number).padStart(2, '0')} · start {String(win.number + 1).padStart(2, '0')}
           </button>
+          <p className="faint" style={{ marginTop: 10 }}>
+            The season dial carries into the next window — re-turn it above if the season is changing.
+          </p>
         </Card>
       ) : (
         <Card title="Review">

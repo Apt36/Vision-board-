@@ -271,6 +271,11 @@ export interface Window60 {
   days: number
   intention: string
   active: boolean
+  /**
+   * The season dial: the rooms this window leans toward. Everything else
+   * stays in rotation at a simmer — a season shifts weight, it never mutes.
+   */
+  focusRoomIds: string[]
 }
 
 export interface WindowReview {

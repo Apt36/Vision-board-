@@ -30,7 +30,7 @@ await p.waitForTimeout(500)
 const s=await p.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
 console.log('Migration v1 -> v2')
 ok('app still renders', await p.getByText('Journey').first().isVisible())
-ok('version bumped', s.version===4, s.version)
+ok('version bumped', s.version===5, s.version)
 ok('check-in preserved', !!s.checkins['2026-08-13'])
 const c=s.checkins['2026-08-13']
 ok('meals=2 became breakfast+lunch', c.breakfast===true&&c.lunch===true&&c.dinner===false, JSON.stringify({b:c.breakfast,l:c.lunch,d:c.dinner}))
@@ -75,7 +75,7 @@ v2.edits = [{id:'e1',date:'2026-08-14',title:'wk',minutes:40,clipIds:[],publishe
 await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v2)
 await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
 const s3=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
-ok('v3 version', s3.version===4, s3.version)
+ok('v3 version', s3.version===5, s3.version)
 ok('app renders after v3 migrate', await p2.getByText('Journey').first().isVisible())
 ok('channels added', s3.channels?.length===8, s3.channels?.length)
 ok('window started', !!s3.window?.startDate && s3.window.number===2)
@@ -105,13 +105,43 @@ v3.channels.find(c => c.id === 'ch-truce').weight = 5 // user-tuned weight must 
 await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v3)
 await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
 const s5=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
-ok('v4 version', s5.version===4, s5.version)
+ok('v4 version', s5.version===5, s5.version)
 ok('music room added', s5.rooms.some(r=>r.id==='r-music'))
 ok('journal room added', s5.rooms.some(r=>r.id==='r-journal'))
 ok('music wired into TRUCE', s5.channels.find(c=>c.id==='ch-truce')?.roomIds.includes('r-music'))
 ok('journal wired into THE MIND', s5.channels.find(c=>c.id==='ch-mind')?.roomIds.includes('r-journal'))
 ok('tuned channel weight kept', s5.channels.find(c=>c.id==='ch-truce')?.weight===5)
 ok('rooms not duplicated', s5.rooms.filter(r=>r.id==='r-music').length===1 && s5.rooms.filter(r=>r.id==='r-journal').length===1)
+
+// ---- v4 -> v5: the season dial, the second pod, the long game ----
+console.log('\nMigration v4 -> v5')
+const v4 = JSON.parse(JSON.stringify(s5))
+v4.version = 4
+delete v4.window.focusRoomIds
+v4.rooms = v4.rooms.filter(r => r.id !== 'r-pod-ent' && r.id !== 'r-longgame')
+v4.channels = v4.channels.map(c => ({...c, roomIds: c.roomIds.filter(id => id !== 'r-pod-ent' && id !== 'r-longgame')}))
+// untouched podcast room (old seed name + intention) must get the new copy...
+const pod = v4.rooms.find(r => r.id === 'r-podcast')
+pod.name = 'Podcast'
+pod.intention = 'Usually after therapy, while your head is clear. Build the rhythm instead of waiting for the mood.'
+// ...but a user-edited vlog intention must be left alone
+v4.rooms.find(r => r.id === 'r-vlog').intention = 'my own words about the vlog'
+await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v4)
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
+const s6=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('v5 version', s6.version===5, s6.version)
+ok('season dial seeded', JSON.stringify(s6.window.focusRoomIds)===JSON.stringify(['r-license','r-realtor','r-french']), JSON.stringify(s6.window.focusRoomIds))
+ok('entertainment pod added', s6.rooms.some(r=>r.id==='r-pod-ent'))
+ok('long game room added', s6.rooms.some(r=>r.id==='r-longgame'))
+ok('both wired into TRUCE', ['r-pod-ent','r-longgame'].every(id=>s6.channels.find(c=>c.id==='ch-truce')?.roomIds.includes(id)))
+ok('untouched podcast renamed to Self Pod', s6.rooms.find(r=>r.id==='r-podcast')?.name==='Self Pod')
+ok('edited vlog intention preserved', s6.rooms.find(r=>r.id==='r-vlog')?.intention==='my own words about the vlog')
+ok('truce tagline refreshed', s6.channels.find(c=>c.id==='ch-truce')?.tagline.includes('archive'), s6.channels.find(c=>c.id==='ch-truce')?.tagline)
+// a dial the user already set must survive a reload untouched
+await p2.evaluate(()=>{const st=JSON.parse(localStorage.getItem('matt-os-state-v1'));st.window.focusRoomIds=['r-music'];localStorage.setItem('matt-os-state-v1',JSON.stringify(st))})
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(400)
+const s7=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('user-set dial survives reload', JSON.stringify(s7.window.focusRoomIds)===JSON.stringify(['r-music']), JSON.stringify(s7.window.focusRoomIds))
 
 await b.close()
 console.log(f===0?'\nMIGRATION SAFE':`\n${f} FAILURES`)
