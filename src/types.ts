@@ -243,6 +243,8 @@ export interface AppState {
   therapy: TherapySession[]
   activity: ActivityEvent[]
   anchorChecks: Record<string, string[]>
+  /** date -> plan step ids checked off that day. */
+  planLog: Record<string, string[]>
   channels: Channel[]
   window: Window60
   windowReviews: WindowReview[]

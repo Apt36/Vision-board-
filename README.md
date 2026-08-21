@@ -4,9 +4,20 @@ A personal operating system — a mobile-first PWA whose job is to make sure eve
 
 > Work is important. But work is not the project. **You are the project.**
 
-## What it does
+## How it works — the 2-minute version
 
-- **Today screen** — date, work schedule, day type (work/off), a capacity score, dynamically generated priorities, an "avoid today" list, the Life Radar, and a steering note.
+The app has four tabs, and the whole flow is one loop:
+
+1. **Today** — a coach-style daily plan: a short path of 4–8 steps (morning habits → a few focused "lessons" from ONE area of your vision board → evening habits → a 60-second check-in). Tap a step, do it, mark it done, get celebrated. You never have to touch the whole board in one day.
+2. **Journey** — the payoff view: your showing-up streak, which of the 8 board areas got attention each day this week, and the 60-day chapter you're in. Weekly reset (pick 3–5 priorities) lives here.
+3. **Board** — the vision board itself: 8 life areas, each holding a few goals. The daily plan always focuses on whichever area has waited longest, so over a week everything gets its turn.
+4. **You** — check-in details, body/career/French/money/mind sections, routines, settings.
+
+Completing a lesson logs a session for that area, which feeds the rotation engine — so tomorrow's plan automatically focuses somewhere else. Strategic coverage without planning anything yourself.
+
+## What's underneath
+
+- **Daily plan engine** (`src/logic/plan.ts`) — turns the channel-rotation engine's pick into an ordered lesson path, pinned per-day so the plan never shifts underfoot; celebrates completions and tracks a generous "you showed up" streak.
 - **"What should I do?"** — a rules engine that reads the actual stored data (schedule, time of day, sleep, energy, meals, neglected domains, weekly priorities) and returns a concise, situation-aware recommendation. If you're exhausted after an 11–7 shift, the correct answer is *Eat. Shower. Connect. Sleep.* — and that's what it says.
 - **Capacity system** — baseline from the work schedule (off day ≈ high, 11–7 ≈ low/medium, 9–5 ≈ low), adjusted by sleep, energy, and back-to-back demanding days. It exists to prevent overload, not to punish.
 - **Daily check-in** — under 60 seconds, autosaving, reloads today's entry if it exists. Sleep, energy, meals, exercise, steps, weight, French, reading, career, connection, creative, notes.

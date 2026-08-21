@@ -4,6 +4,7 @@ import type {
   Room, Routine, UserSettings, Window60, WorkSchedule
 } from './types'
 import { todayISO } from './logic/date'
+import { todaysAssignment } from './logic/channels'
 
 const STORAGE_KEY = 'matt-os-state-v1'
 const VERSION = 3
@@ -258,6 +259,7 @@ function initialState(): AppState {
     therapy: [],
     activity: [],
     anchorChecks: {},
+    planLog: {},
     channels: channelSeeds,
     window: { ...defaultWindow, startDate: todayISO(), active: true },
     windowReviews: [],
@@ -337,6 +339,7 @@ function migrate(parsed: any): AppState {
     : { ...defaultWindow, startDate: todayISO(), active: true }
   next.windowReviews = parsed.windowReviews ?? []
   next.assignments = parsed.assignments ?? {}
+  next.planLog = parsed.planLog ?? {}
 
   delete (next as any).goals
   delete (next as any).projectNotes
@@ -459,6 +462,43 @@ export function enterRoom(roomId: string, minutes: number, note: string, filmed:
     }
     return next
   })
+}
+
+/**
+ * Freeze today's plan in place the first time Today is opened, so completing
+ * steps (which feeds the rotation engine) never reshuffles the current day.
+ */
+export function pinTodayAssignment(date = todayISO()) {
+  setState(s => {
+    if (s.assignments[date]) return s
+    const a = todaysAssignment(s, date)
+    if (!a) return s
+    const roomIds = [
+      ...a.rooms.map(r => r.room.id),
+      ...(a.keepAlive ? [a.keepAlive.room.id] : [])
+    ]
+    return {
+      ...s,
+      assignments: {
+        ...s.assignments,
+        [date]: { date, channelId: a.channel.id, roomIds, accepted: true }
+      }
+    }
+  })
+}
+
+export function markPlanStep(date: string, stepId: string) {
+  setState(s => {
+    const day = s.planLog[date] ?? []
+    if (day.includes(stepId)) return s
+    return { ...s, planLog: { ...s.planLog, [date]: [...day, stepId] } }
+  })
+}
+
+/** Completing a focus step also logs a session, so the area counts as fed. */
+export function completeFocusRoom(roomId: string, minutes: number, date = todayISO()) {
+  enterRoom(roomId, minutes, "Completed from today's plan", false, date)
+  markPlanStep(date, `focus-${roomId}`)
 }
 
 export function setChallengeDay(date: string, clean: boolean) {

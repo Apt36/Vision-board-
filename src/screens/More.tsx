@@ -7,6 +7,7 @@ import type { Route } from '../App'
 
 const SECTIONS: { route: Route; label: string; sub: string }[] = [
   { route: 'monk', label: 'Monk', sub: '60 days, no vices' },
+  { route: 'capture', label: 'Capture', sub: 'Footage, clips, edit sessions' },
   { route: 'body', label: 'Body', sub: 'Weight, meals, pushups, sleep' },
   { route: 'collections', label: 'Collections', sub: 'Art, vinyl, library' },
   { route: 'wishlist', label: 'Want list', sub: 'Tools, restraint, saving up' },
@@ -26,11 +27,11 @@ export default function More({ go }: { go: (r: Route) => void }) {
 
   return (
     <div>
-      <div className="brand">LIFE</div>
-      <h1 className="screen-title">All of it</h1>
+      <div className="brand">YOU</div>
+      <h1 className="screen-title">All of you</h1>
       <p className="screen-sub">Work is important. But work is not the project. You are the project.</p>
 
-      <Card title="Life Radar">
+      <Card title="Where your attention has gone">
         <RadarBars items={attention} />
         <p className="faint" style={{ marginTop: 10 }}>Recent attention, not performance.</p>
       </Card>
