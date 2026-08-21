@@ -7,7 +7,7 @@ import { todayISO } from './logic/date'
 import { todaysAssignment } from './logic/channels'
 
 const STORAGE_KEY = 'matt-os-state-v1'
-const VERSION = 3
+const VERSION = 4
 
 // ===== Defaults / seed =====
 
@@ -85,9 +85,15 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-podcast', name: 'Podcast', domainId: 'creative', cadence: 'biweekly', status: 'active', urgent: false, feature: 'content',
     intention: 'Usually after therapy, while your head is clear. Build the rhythm instead of waiting for the mood.',
     nextAction: 'Record the next episode after therapy' },
+  { id: 'r-music', name: 'Music Recording', domainId: 'creative', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'Its own craft, not a someday thing. A rough take on the phone counts — get it out of your head and onto a track.',
+    nextAction: 'Record one rough take or sketch' },
   { id: 'r-therapy', name: 'Therapy', domainId: 'mind', cadence: 'biweekly', status: 'active', urgent: false, feature: 'therapy',
     intention: 'A pulse check. It keeps you afloat, confident, clear and in movement.',
     nextAction: 'Note what to bring to the next session' },
+  { id: 'r-journal', name: 'Journal', domainId: 'mind', cadence: 'daily', status: 'active', urgent: false, feature: null,
+    intention: 'Therapy is every two weeks; the journal is what happens in between. A few honest lines, no performance.',
+    nextAction: 'Write a few honest lines' },
   { id: 'r-grooming', name: 'Haircut & Grooming', domainId: 'style', cadence: 'biweekly', status: 'active', urgent: false, feature: null,
     intention: 'Bi-weekly. The other pulse check — it changes how you carry yourself.',
     nextAction: 'Book the next cut' },
@@ -170,12 +176,12 @@ const channelSeeds: Channel[] = [
   { id: 'ch-build', name: 'THE BUILD', tagline: 'Options, licence, income. The future you are owed.',
     color: '#3987e5', weight: 5, order: 2,
     roomIds: ['r-license', 'r-realtor', 'r-rentals', 'r-money', 'r-accora'] },
-  { id: 'ch-truce', name: 'TRUCE', tagline: 'The channel. Film it, cut it, publish it.',
+  { id: 'ch-truce', name: 'TRUCE', tagline: 'The channel. Film it, cut it, record it, publish it.',
     color: '#d95926', weight: 4, order: 3,
-    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast'] },
+    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast', 'r-music'] },
   { id: 'ch-mind', name: 'THE MIND', tagline: 'Read, reflect, stay clean, stay honest.',
     color: '#9085e9', weight: 4, order: 4,
-    roomIds: ['r-reading', 'r-therapy', 'r-identity', 'r-monk'] },
+    roomIds: ['r-reading', 'r-therapy', 'r-journal', 'r-identity', 'r-monk'] },
   { id: 'ch-people', name: 'THE PEOPLE', tagline: 'The ones who are still there when the projects stall.',
     color: '#d55181', weight: 4, order: 5,
     roomIds: ['r-people'] },
@@ -334,6 +340,14 @@ function migrate(parsed: any): AppState {
   for (const seedRoom of base.rooms) {
     if (!next.rooms.some(r => r.id === seedRoom.id)) next.rooms = [...next.rooms, seedRoom]
   }
+  // v4: seed rooms added after a channel was stored (music, journal) still need
+  // to be wired into that channel, or they'd never get a turn.
+  next.channels = next.channels.map(ch => {
+    const seed = channelSeeds.find(c => c.id === ch.id)
+    if (!seed) return ch
+    const missing = seed.roomIds.filter(id => !ch.roomIds.includes(id))
+    return missing.length ? { ...ch, roomIds: [...ch.roomIds, ...missing] } : ch
+  })
   next.window = parsed.window?.startDate
     ? { ...defaultWindow, ...parsed.window }
     : { ...defaultWindow, startDate: todayISO(), active: true }

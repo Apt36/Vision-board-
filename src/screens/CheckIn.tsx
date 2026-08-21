@@ -133,7 +133,7 @@ export default function CheckIn() {
 
       <Card title="Mind & work">
         <SwitchRow label="Reading" on={c.reading} onChange={v => update({ reading: v })} />
-        <SwitchRow label="Reflection / mental reset" on={c.mind} onChange={v => update({ mind: v })} />
+        <SwitchRow label="Reflection / mental reset" sub="Journaling, meditation, a real pause" on={c.mind} onChange={v => update({ mind: v })} />
         <SwitchRow label="Career work" sub="Licence, applications, studying" on={c.career} onChange={v => update({ career: v })} />
         <SwitchRow label="Creative work" sub="Filming, editing, podcast, music" on={c.creative} onChange={v => update({ creative: v })} />
       </Card>
