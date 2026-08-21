@@ -1,253 +1,217 @@
-import { useMemo, useState } from 'react'
-import { bumpCommitment, useAppState } from '../store'
-import { todayISO, formatLong } from '../logic/date'
-import { capacityFor, dayInfo } from '../logic/capacity'
-import { computeAttention, steeringNote } from '../logic/attention'
-import { todayPlan, whatShouldIDo, currentWeekPriorities, unusedFootage } from '../logic/recommend'
-import { roomsForToday } from '../logic/rooms'
-import { todaysAssignment, windowState, channelStates, networkBalance } from '../logic/channels'
-import { challengeState, commitmentStreak, isCommitmentDone } from '../logic/streaks'
-import { Card, RadarBars, Sheet } from '../components/ui'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { bumpCommitment, completeFocusRoom, pinTodayAssignment, useAppState } from '../store'
+import { todayISO, formatTime } from '../logic/date'
+import { dayInfo } from '../logic/capacity'
+import { buildDayPlan, careStreak, channelEmoji, friendlyName, PlanStep } from '../logic/plan'
+import { whatShouldIDo } from '../logic/recommend'
+import { commitmentStreak, isCommitmentDone } from '../logic/streaks'
+import { Sheet } from '../components/ui'
+import { Celebration, ProgressRing } from '../components/celebrate'
 import type { Route } from '../App'
 
-const SLOTS: { id: 'morning' | 'day' | 'evening'; label: string }[] = [
-  { id: 'morning', label: 'Morning' },
-  { id: 'day', label: 'Day' },
-  { id: 'evening', label: 'Evening' }
-]
+interface Cheer { emoji: string; title: string; message: string }
+
+const PRAISE = ['Nice work!', 'Keep it going!', 'Look at you go!', 'That counts. It all counts.', 'One step at a time — and you just took one.']
+
+function greeting(name: string): string {
+  const h = new Date().getHours()
+  const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+  return `${part}, ${name}`
+}
 
 export default function Today({ go, openRoom }: { go: (r: Route) => void; openRoom: (id: string) => void }) {
   const state = useAppState()
   const today = todayISO()
+
+  // Freeze today's plan the first time the screen opens.
+  useEffect(() => { pinTodayAssignment(today) }, [today])
+
+  const plan = useMemo(() => buildDayPlan(state, today), [state, today])
+  const streak = careStreak(state, today)
+  const info = dayInfo(state, today)
+
+  const [openStepId, setOpenStepId] = useState<string | null>(null)
+  const [cheer, setCheer] = useState<Cheer | null>(null)
   const [showRec, setShowRec] = useState(false)
   const [recAt, setRecAt] = useState<Date | null>(null)
 
-  const info = dayInfo(state, today)
-  const cap = capacityFor(state, today)
-  const attention = useMemo(() => computeAttention(state, today), [state, today])
-  const note = steeringNote(attention)
-  const plan = useMemo(() => todayPlan(state, today), [state, today])
-  const rooms = useMemo(() => roomsForToday(state, today), [state, today])
-  const cs = challengeState(state, today)
-  const win = windowState(state, today)
-  const assignment = useMemo(() => todaysAssignment(state, today), [state, today])
-  const balance = networkBalance(useMemo(() => channelStates(state, today), [state, today]))
-  const checkin = state.checkins[today]
-  const protectedIds = currentWeekPriorities(state, today)
-  const unused = unusedFootage(state)
+  const openStep = plan.steps.find(s => s.id === openStepId) ?? null
+  const nextStep = plan.steps.find(s => !s.done) ?? null
   const rec = recAt ? whatShouldIDo(state, recAt) : null
 
-  const capColor = cap.tier === 'low' ? 'var(--warn)' : cap.tier === 'medium' ? 'var(--accent)' : 'var(--good)'
-  const roomLine = !info.isWorkDay
-    ? "You have room today.\nDon't fill all of it."
-    : cap.tier === 'low'
-      ? 'A demanding day.\nSurvive it well — that counts.'
-      : 'A work day.\nOne room is enough.'
+  const cheerFor = (step: PlanStep, dayNowComplete: boolean): Cheer => {
+    if (dayNowComplete) {
+      return {
+        emoji: '🎉', title: 'Day complete!',
+        message: `Every step, done. ${streak > 1 ? `That's a ${streak}-day streak — ` : ''}see you tomorrow.`
+      }
+    }
+    if (step.kind === 'habits') return { emoji: step.emoji, title: 'Habits locked in ✓', message: PRAISE[plan.doneCount % PRAISE.length] }
+    if (step.kind === 'keepalive') return { emoji: step.emoji, title: `${step.area?.name ?? 'That area'} stayed alive`, message: 'A small visit still counts. Nothing starves this week.' }
+    if (step.kind === 'checkin') return { emoji: '📝', title: 'Checked in ✓', message: 'Day logged. That is how progress becomes visible.' }
+    return { emoji: step.emoji, title: `Real progress on ${step.area?.name ?? 'your board'}`, message: PRAISE[plan.doneCount % PRAISE.length] }
+  }
 
-  const anchors = state.commitments.filter(c => c.active)
-  const doneCount = anchors.filter(c => isCommitmentDone(state, c, today)).length
+  // Habit and check-in steps complete through their own toggles — watch for the
+  // moment one flips to done so the sheet closes and the win gets celebrated.
+  const prevDoneRef = useRef<Set<string>>(new Set(plan.steps.filter(s => s.done).map(s => s.id)))
+  useEffect(() => {
+    const prev = prevDoneRef.current
+    const nowDone = plan.steps.filter(s => s.done)
+    const fresh = nowDone.find(s => !prev.has(s.id) && s.id === openStepId)
+    prevDoneRef.current = new Set(nowDone.map(s => s.id))
+    if (fresh) {
+      setOpenStepId(null)
+      setCheer(cheerFor(fresh, plan.complete))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.steps.map(s => (s.done ? '1' : '0')).join('')])
+
+  const completeFocus = (step: PlanStep) => {
+    if (!step.room) return
+    const remaining = plan.steps.filter(s => !s.done && s.id !== step.id).length
+    completeFocusRoom(step.room.id, step.minutes ?? 20, today)
+    setOpenStepId(null)
+    setCheer(cheerFor(step, remaining === 0))
+  }
+
+  const onStepTap = (step: PlanStep) => {
+    if (step.kind === 'checkin') { go('checkin'); return }
+    setOpenStepId(step.id)
+  }
 
   return (
     <div>
-      <div className="brand">MATT OS</div>
-      <h1 className="screen-title">{formatLong(today)}</h1>
-      <div style={{ margin: '10px 0 16px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span className={`pill ${info.isWorkDay ? 'pill-work' : 'pill-off'}`}>
-          {info.isWorkDay ? 'WORK DAY' : 'OFF DAY'}
-        </span>
-        {info.isWorkDay && <span className="pill pill-dim">{info.label}</span>}
-        {info.earlyStart && <span className="pill pill-dim">early start</span>}
-      </div>
-
-      <button className="window-strip" onClick={() => go('window')}>
-        <span className="window-strip-label">
-          WINDOW {String(win.number).padStart(2, '0')} · DAY {win.day}
-          <span className="faint"> / {win.days}</span>
-        </span>
-        <span className="window-strip-bar">
-          <span style={{ width: `${win.percent}%` }} />
-        </span>
-      </button>
-
-      {assignment && (
-        <section className="assign" style={{ ['--ch' as string]: assignment.channel.color }}>
-          <div className="assign-head">
-            <span className="assign-kicker">ON AIR TODAY</span>
-            <span className="assign-mins">{assignment.totalMinutes} min</span>
+      <header className="coach-head">
+        <div>
+          <div className="coach-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+          <h1 className="coach-greet">{greeting(state.settings.name)}</h1>
+          <div className="coach-context">
+            {info.isWorkDay ? `Work day · ${formatTime(info.shift.start)}–${formatTime(info.shift.end)}` : 'Day off — your time'}
           </div>
-          <h2 className="assign-channel">{assignment.channel.name}</h2>
-          <p className="assign-tag">{assignment.channel.tagline}</p>
-          <ol className="assign-list">
-            {assignment.rooms.map((a, i) => (
-              <li key={a.room.id}>
-                <button onClick={() => openRoom(a.room.id)}>
-                  <span className="assign-num">{i + 1}</span>
-                  <span className="assign-room">
-                    <strong>{a.room.name}</strong>
-                    <span className="assign-next">{a.room.nextAction || 'Give it a real turn'}</span>
-                  </span>
-                  <span className="assign-time">{a.minutes}m</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          {assignment.keepAlive && (
-            <button className="assign-keep" onClick={() => openRoom(assignment.keepAlive!.room.id)}>
-              Keep alive · <strong>{assignment.keepAlive.room.name}</strong>
-              <span className="faint"> ({assignment.keepAlive.channel.name}) ›</span>
-            </button>
-          )}
-          <p className="assign-why">{assignment.why}</p>
+        </div>
+        {streak > 0 && (
+          <div className="streak-chip" title="Days in a row you showed up">
+            <span className="streak-flame">🔥</span>
+            <span className="streak-num">{streak}</span>
+            <span className="streak-label">day{streak === 1 ? '' : 's'}</span>
+          </div>
+        )}
+      </header>
+
+      {plan.complete ? (
+        <section className="day-done card">
+          <div className="day-done-emoji">🏆</div>
+          <h2>Day complete!</h2>
+          <p className="muted">
+            You did every step of today's plan. Rest is part of the plan too — you've earned the evening.
+          </p>
+          <button className="btn btn-block" style={{ marginTop: 14 }} onClick={() => go('journey')}>
+            See your journey ›
+          </button>
+        </section>
+      ) : (
+        <section className="plan-hero card">
+          <ProgressRing percent={plan.percent} size={92} color={plan.focusChannel?.color ?? 'var(--accent)'}>
+            <span className="plan-hero-count">{plan.doneCount}<span className="plan-hero-of">/{plan.total}</span></span>
+          </ProgressRing>
+          <div className="plan-hero-text">
+            <div className="plan-hero-title">Today's plan</div>
+            <p className="plan-hero-msg">
+              {plan.doneCount === 0
+                ? `${plan.total} small steps today. Start anywhere — the first one is right below.`
+                : `${plan.doneCount} down, ${plan.total - plan.doneCount} to go. You're rolling.`}
+            </p>
+            {plan.focusChannel && (
+              <div className="plan-focus-chip" style={{ ['--ch' as string]: plan.focusChannel.color }}>
+                Focus: {channelEmoji(plan.focusChannel.id)} {friendlyName(plan.focusChannel.name)}
+              </div>
+            )}
+          </div>
         </section>
       )}
 
-      {cs.active && (
-        <button className="card monk-card" onClick={() => go('monk')}>
-          <div>
-            <div className="card-title" style={{ marginBottom: 4 }}>MONK</div>
-            <div className="big-stat">Day {cs.day}<span className="faint" style={{ fontSize: '1rem' }}> / {cs.targetDays}</span></div>
-          </div>
-          <div className="monk-ring" style={{ ['--pct' as string]: `${cs.percent}%` }}>
-            <span>{cs.percent}%</span>
-          </div>
-        </button>
-      )}
-
-      <Card title="Capacity">
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span className="capacity-num" style={{ color: capColor }}>{cap.score}%</span>
-          <span className="pill pill-dim">{cap.tier.toUpperCase()}</span>
-        </div>
-        <div className="capacity-bar"><div style={{ width: `${cap.score}%`, background: capColor }} /></div>
-        <p className="muted" style={{ marginTop: 12, whiteSpace: 'pre-line' }}>{roomLine}</p>
-      </Card>
-
-      <Card title={`Anchors · ${doneCount}/${anchors.length}`}>
-        {SLOTS.map(slot => {
-          const items = anchors.filter(c => c.slot === slot.id)
-          if (items.length === 0) return null
+      <ol className="path">
+        {plan.steps.map((step, i) => {
+          const isNext = !plan.complete && step.id === nextStep?.id
           return (
-            <div key={slot.id} style={{ marginBottom: 10 }}>
-              <div className="faint" style={{ marginBottom: 4 }}>{slot.label}</div>
-              {items.map(c => {
-                const count = state.commitmentLog[today]?.[c.id] ?? 0
-                const done = count >= c.target
-                const streak = commitmentStreak(state, c, today)
-                return (
-                  <button key={c.id} className="anchor-row" onClick={() => bumpCommitment(c.id)}>
-                    <span className={`anchor-box ${done ? 'on' : count > 0 ? 'part' : ''}`}>
-                      {done ? '✓' : c.target > 1 ? `${count}/${c.target}` : ''}
-                    </span>
-                    <span className={`anchor-label ${done ? 'done' : ''}`}>{c.label}</span>
-                    {streak > 1 && <span className="anchor-streak">{streak}d</span>}
-                  </button>
-                )
-              })}
-            </div>
-          )
-        })}
-      </Card>
-
-      <Card title="Today">
-        <ol className="plist">
-          {plan.priorities.map((p, i) => (
-            <li key={p.domainId}>
-              <span className="num">{i + 1}</span>
-              <span>
-                <span className="dom">{p.domainName}</span>
-                {p.text}
-              </span>
+            <li key={step.id} className={`path-item ${step.done ? 'done' : ''} ${isNext ? 'next' : ''}`}>
+              <button className="path-step" onClick={() => onStepTap(step)}
+                style={step.area ? { ['--ch' as string]: step.area.color } : undefined}>
+                <span className={`path-node ${step.done ? 'on' : ''}`}>
+                  {step.done ? '✓' : step.emoji}
+                </span>
+                <span className="path-body">
+                  {isNext && <span className="path-next-tag">UP NEXT</span>}
+                  {step.area && <span className="path-area" style={{ color: step.area.color }}>{step.area.name}{step.kind === 'keepalive' ? ' · quick visit' : ''}</span>}
+                  <span className="path-title">{step.title}</span>
+                  <span className="path-detail">{step.detail}</span>
+                </span>
+                {step.minutes != null && <span className="path-mins">{step.minutes} min</span>}
+              </button>
             </li>
-          ))}
-        </ol>
-        {protectedIds.length > 0 && (
-          <p className="faint" style={{ marginTop: 10 }}>
-            Shaped by this week's priorities: {protectedIds.map(id => state.domains.find(d => d.id === id)?.name).filter(Boolean).join(', ')}.
-          </p>
-        )}
-      </Card>
-
-      <Card title="Network balance">
-        <p className="steering">{balance.note}</p>
-        <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => go('network')}>
-          Open the network
-        </button>
-      </Card>
-
-      <Card title="Also open">
-        {rooms.length === 0 ? (
-          <p className="empty">Every room has had its turn recently. Rest is the right move.</p>
-        ) : rooms.map(c => {
-          const domain = state.domains.find(d => d.id === c.room.domainId)
-          return (
-            <button key={c.room.id} className="row" style={{ width: '100%', textAlign: 'left' }}
-              onClick={() => openRoom(c.room.id)}>
-              <div>
-                <div className="row-label" style={{ fontWeight: 600 }}>
-                  <span style={{ color: domain?.color }}>●</span> {c.room.name}
-                  {c.room.urgent && <span className="faint"> · pressing</span>}
-                </div>
-                <div className="row-sub">{c.room.nextAction || c.reason}</div>
-              </div>
-              <span className="faint">›</span>
-            </button>
           )
         })}
-      </Card>
+      </ol>
 
-      {plan.avoid.length > 0 && (
-        <Card title="Avoid today">
-          <ul className="avoid-list">
-            {plan.avoid.map((a, i) => <li key={i}>{a}</li>)}
-          </ul>
-        </Card>
-      )}
-
-      {unused.length >= 5 && (
-        <Card title="Edit queue">
-          <p className="muted">
-            {unused.length} pieces of footage waiting. That's enough raw material for a real edit session — which is the reps, not a chore.
-          </p>
-          <button className="btn btn-accent btn-block" style={{ marginTop: 10 }} onClick={() => go('capture')}>
-            Open Capture
-          </button>
-        </Card>
-      )}
-
-      <Card title="Life Radar">
-        <RadarBars items={attention} />
-        <p className="faint" style={{ marginTop: 10 }}>Recent attention, not performance.</p>
-      </Card>
-
-      {note && (
-        <Card title="Steering note">
-          <p className="steering">{note}</p>
-        </Card>
-      )}
-
-      <Card title="Quick check-in">
-        {checkin ? (
-          <div className="row" style={{ borderTop: 'none' }}>
-            <div>
-              <div className="row-label checkin-saved">✓ Checked in today</div>
-              <div className="row-sub">
-                {checkin.sleepHours != null ? `${checkin.sleepHours}h sleep · ` : ''}
-                {checkin.energy != null ? `energy ${checkin.energy}/10 · ` : ''}
-                {[checkin.breakfast, checkin.lunch, checkin.dinner].filter(Boolean).length}/3 meals
-              </div>
-            </div>
-            <button className="btn btn-sm" onClick={() => go('checkin')}>Update</button>
-          </div>
-        ) : (
-          <button className="btn btn-accent btn-block" onClick={() => go('checkin')}>
-            60-second check-in
-          </button>
-        )}
-      </Card>
+      <p className="plan-why">
+        {plan.focusChannel
+          ? `Why this plan? ${friendlyName(plan.focusChannel.name)} has waited longest for your attention, so it's today's focus. The focus rotates daily — over a week, every area of your board gets its turn.`
+          : 'Your plan rotates daily, so over a week every area of your board gets its turn.'}
+      </p>
+      <button className="btn btn-block" onClick={() => go('network')}>See your whole board ›</button>
 
       <button className="big-btn" onClick={() => { setRecAt(new Date()); setShowRec(true) }}>
-        WHAT SHOULD I DO?
+        NOT SURE? ASK YOUR COACH
       </button>
+
+      {openStep && openStep.kind === 'habits' && (
+        <Sheet onClose={() => setOpenStepId(null)}>
+          <h2>{openStep.emoji} {openStep.title}</h2>
+          <p className="muted" style={{ margin: '6px 0 14px' }}>
+            Tick each one off as you do it — the step completes itself.
+          </p>
+          {openStep.anchors.map(c => {
+            const count = state.commitmentLog[today]?.[c.id] ?? 0
+            const done = isCommitmentDone(state, c, today)
+            const cstreak = commitmentStreak(state, c, today)
+            return (
+              <button key={c.id} className="anchor-row" onClick={() => bumpCommitment(c.id)}>
+                <span className={`anchor-box ${done ? 'on' : count > 0 ? 'part' : ''}`}>
+                  {done ? '✓' : c.target > 1 ? `${count}/${c.target}` : ''}
+                </span>
+                <span className={`anchor-label ${done ? 'done' : ''}`}>{c.label}</span>
+                {cstreak > 1 && <span className="anchor-streak">🔥 {cstreak}d</span>}
+              </button>
+            )
+          })}
+          <button className="btn btn-block" style={{ marginTop: 14 }} onClick={() => setOpenStepId(null)}>Close</button>
+        </Sheet>
+      )}
+
+      {openStep && (openStep.kind === 'focus' || openStep.kind === 'keepalive') && openStep.room && (
+        <Sheet onClose={() => setOpenStepId(null)}>
+          {openStep.area && (
+            <div className="plan-focus-chip" style={{ ['--ch' as string]: openStep.area.color, marginBottom: 10 }}>
+              {openStep.emoji} {openStep.area.name}
+            </div>
+          )}
+          <h2>{openStep.title}</h2>
+          <p className="muted" style={{ margin: '8px 0 12px' }}>{openStep.room.intention}</p>
+          <div className="card-title">Today's mission</div>
+          <p style={{ marginBottom: 4 }}>{openStep.detail}</p>
+          <p className="faint" style={{ marginBottom: 16 }}>
+            About {openStep.minutes} minutes. {openStep.kind === 'keepalive' ? 'Just keep it warm — done beats perfect.' : 'Done beats perfect.'}
+          </p>
+          <button className="btn btn-accent btn-block" onClick={() => completeFocus(openStep)}>
+            ✓ I did this
+          </button>
+          <button className="btn btn-block" style={{ marginTop: 8 }}
+            onClick={() => { setOpenStepId(null); openRoom(openStep.room!.id) }}>
+            Open full page — log time & notes ›
+          </button>
+        </Sheet>
+      )}
 
       {showRec && rec && (
         <Sheet onClose={() => setShowRec(false)}>
@@ -259,12 +223,16 @@ export default function Today({ go, openRoom }: { go: (r: Route) => void; openRo
           </ol>
           {rec.not.length > 0 && (
             <>
-              <div className="card-title" style={{ marginTop: 14 }}>Not tonight</div>
+              <div className="card-title" style={{ marginTop: 14 }}>Skip tonight</div>
               <ul className="avoid-list">{rec.not.map((n, i) => <li key={i}>{n}</li>)}</ul>
             </>
           )}
           <button className="btn btn-block" style={{ marginTop: 16 }} onClick={() => setShowRec(false)}>Got it</button>
         </Sheet>
+      )}
+
+      {cheer && (
+        <Celebration emoji={cheer.emoji} title={cheer.title} message={cheer.message} onDone={() => setCheer(null)} />
       )}
     </div>
   )

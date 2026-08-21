@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Today from './screens/Today'
+import Journey from './screens/Journey'
 import CheckIn from './screens/CheckIn'
 import Rooms from './screens/Rooms'
 import Network from './screens/Network'
@@ -21,12 +22,12 @@ import Routines from './screens/Routines'
 import Settings from './screens/Settings'
 
 export type Route =
-  | 'today' | 'network' | 'rooms' | 'capture' | 'week' | 'more' | 'checkin' | 'window'
+  | 'today' | 'journey' | 'network' | 'rooms' | 'capture' | 'week' | 'more' | 'checkin' | 'window'
   | 'monk' | 'collections' | 'wishlist'
   | 'body' | 'career' | 'french' | 'money' | 'mind' | 'routines' | 'settings'
 
 const ROUTES: Route[] = [
-  'today', 'network', 'rooms', 'capture', 'week', 'more', 'checkin', 'window',
+  'today', 'journey', 'network', 'rooms', 'capture', 'week', 'more', 'checkin', 'window',
   'monk', 'collections', 'wishlist',
   'body', 'career', 'french', 'money', 'mind', 'routines', 'settings'
 ]
@@ -44,30 +45,27 @@ function parseHash(): Loc {
 const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
   {
     route: 'today', label: 'Today',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" strokeLinecap="round" /></svg>
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 11.5L12 4l8 7.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M6 10v9.5h12V10" strokeLinecap="round" strokeLinejoin="round" /></svg>
   },
   {
-    route: 'network', label: 'Network',
+    route: 'journey', label: 'Journey',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 19l4.5-6 4 3.5L20 6" strokeLinecap="round" strokeLinejoin="round" /><path d="M15.5 6H20v4.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  },
+  {
+    route: 'network', label: 'Board',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="2" /><rect x="13.5" y="3.5" width="7" height="7" rx="2" /><rect x="3.5" y="13.5" width="7" height="7" rx="2" /><rect x="13.5" y="13.5" width="7" height="7" rx="2" /></svg>
   },
   {
-    route: 'capture', label: 'Capture',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2.5" y="6.5" width="13" height="11" rx="3" /><path d="M15.5 11l5-3v8l-5-3z" strokeLinejoin="round" /></svg>
-  },
-  {
-    route: 'week', label: 'Week',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M4 10h16M8 3v4M16 3v4" strokeLinecap="round" /></svg>
-  },
-  {
-    route: 'more', label: 'Life',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 20.5S3.5 15 3.5 9.2A4.7 4.7 0 0 1 12 6.4a4.7 4.7 0 0 1 8.5 2.8c0 5.8-8.5 11.3-8.5 11.3z" strokeLinejoin="round" /></svg>
+    route: 'more', label: 'You',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="4" /><path d="M4.5 20c1.6-3.2 4.3-4.8 7.5-4.8s5.9 1.6 7.5 4.8" strokeLinecap="round" /></svg>
   }
 ]
 
 const SUBSCREEN_PARENT: Partial<Record<Route, Route>> = {
-  monk: 'more', collections: 'more', wishlist: 'more', body: 'more', career: 'more',
+  monk: 'journey', collections: 'more', wishlist: 'more', body: 'more', career: 'more',
   french: 'more', money: 'more', mind: 'more', routines: 'more', settings: 'more',
-  checkin: 'today', window: 'today', rooms: 'network'
+  capture: 'more', week: 'journey',
+  checkin: 'today', window: 'journey', rooms: 'network'
 }
 
 export default function App() {
@@ -96,6 +94,7 @@ export default function App() {
   } else {
     const screens: Record<Route, JSX.Element> = {
       today: <Today go={go} openRoom={openRoom} />,
+      journey: <Journey go={go} />,
       network: <Network openChannel={openChannel} />,
       rooms: <Rooms open={openRoom} />,
       window: <WindowScreen />,
@@ -125,7 +124,7 @@ export default function App() {
       <main className="app">
         {parent && (
           <button className="btn btn-sm" style={{ marginBottom: 12 }} onClick={() => go(parent)}>
-            ← {parent === 'today' ? 'Today' : parent === 'network' ? 'Network' : 'Life'}
+            ← {parent === 'today' ? 'Today' : parent === 'journey' ? 'Journey' : parent === 'network' ? 'Board' : 'You'}
           </button>
         )}
         {screen}
