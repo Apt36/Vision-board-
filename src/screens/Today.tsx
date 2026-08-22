@@ -29,6 +29,9 @@ export default function Today({ go, openRoom }: { go: (r: Route) => void; openRo
   const plan = useMemo(() => buildDayPlan(state, today), [state, today])
   const streak = careStreak(state, today)
   const info = dayInfo(state, today)
+  const seasonRooms = (state.window.focusRoomIds ?? [])
+    .map(id => state.rooms.find(r => r.id === id)?.name)
+    .filter((n): n is string => !!n)
 
   const [openStepId, setOpenStepId] = useState<string | null>(null)
   const [cheer, setCheer] = useState<Cheer | null>(null)
@@ -158,6 +161,7 @@ export default function Today({ go, openRoom }: { go: (r: Route) => void; openRo
         {plan.focusChannel
           ? `Why this plan? ${friendlyName(plan.focusChannel.name)} has waited longest for your attention, so it's today's focus. The focus rotates daily — over a week, every area of your board gets its turn.`
           : 'Your plan rotates daily, so over a week every area of your board gets its turn.'}
+        {seasonRooms.length > 0 && ` This season the dial leans toward ${seasonRooms.length === 1 ? seasonRooms[0] : `${seasonRooms.slice(0, -1).join(', ')} and ${seasonRooms[seasonRooms.length - 1]}`}.`}
       </p>
       <button className="btn btn-block" onClick={() => go('network')}>See your whole board ›</button>
 

@@ -19,6 +19,9 @@ export default function Journey({ go }: { go: (r: Route) => void }) {
   const cs = challengeState(state, today)
   const win = windowState(state, today)
   const weekStart = weekStartOf(today)
+  const seasonRooms = (state.window.focusRoomIds ?? [])
+    .map(id => state.rooms.find(r => r.id === id)?.name)
+    .filter((n): n is string => !!n)
 
   const touchedCount = coverage.filter(c => c.touched).length
   const coverageLine = touchedCount === coverage.length
@@ -88,6 +91,11 @@ export default function Journey({ go }: { go: (r: Route) => void }) {
             <p className="muted">
               {state.window.intention || 'Sixty days of steady turns. Small and daily beats heroic and rare.'}
             </p>
+            {seasonRooms.length > 0 && (
+              <div className="chip-row" style={{ marginTop: 8 }}>
+                {seasonRooms.map(n => <span key={n} className="pill pill-dim">◉ {n}</span>)}
+              </div>
+            )}
           </div>
         </div>
         <button className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => go('window')}>

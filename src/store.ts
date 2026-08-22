@@ -7,7 +7,7 @@ import { todayISO } from './logic/date'
 import { todaysAssignment } from './logic/channels'
 
 const STORAGE_KEY = 'matt-os-state-v1'
-const VERSION = 3
+const VERSION = 6
 
 // ===== Defaults / seed =====
 
@@ -74,7 +74,7 @@ const roomSeeds: RoomSeed[] = [
     intention: 'Duolingo daily, then real exposure. Small and every day beats heroic and rare.',
     nextAction: 'Duolingo + 10 min listening' },
   { id: 'r-vlog', name: 'Vlog', domainId: 'creative', cadence: 'daily', status: 'active', urgent: false, feature: 'content',
-    intention: 'A by-product of the project. It tracks the progression in real time and shows what it looks like.',
+    intention: 'The connective tissue. A private archive of the whole evolution — every other room shows up in it. Not for the internet. And every clip quietly teaches you to edit.',
     nextAction: 'Film one honest moment' },
   { id: 'r-editing', name: 'Editing', domainId: 'creative', cadence: 'weekly', status: 'active', urgent: false, feature: 'content',
     intention: 'The craft you are building. Your own life is the raw material — two birds with one stone.',
@@ -82,12 +82,24 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-dslr', name: 'DSLR Series', domainId: 'creative', cadence: 'weekly', status: 'active', urgent: false, feature: 'content',
     intention: 'It is collecting dust. Learn it on camera — the learning itself is the series.',
     nextAction: 'One setting, one session, filmed' },
-  { id: 'r-podcast', name: 'Podcast', domainId: 'creative', cadence: 'biweekly', status: 'active', urgent: false, feature: 'content',
-    intention: 'Usually after therapy, while your head is clear. Build the rhythm instead of waiting for the mood.',
+  { id: 'r-podcast', name: 'Self Pod', domainId: 'creative', cadence: 'biweekly', status: 'active', urgent: false, feature: 'content',
+    intention: 'Usually after therapy, while your head is clear and loose. Build the rhythm instead of waiting for the mood.',
     nextAction: 'Record the next episode after therapy' },
+  { id: 'r-pod-ent', name: 'Entertainment Pod', domainId: 'creative', cadence: 'biweekly', status: 'active', urgent: false, feature: 'content',
+    intention: 'The other lane. Not about fixing you — just fun. Keeping it separate lets the Self Pod stay what it is.',
+    nextAction: 'Sketch a format or record a loose test episode' },
+  { id: 'r-music', name: 'Music Recording', domainId: 'creative', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'Its own craft, not a someday thing. A rough take on the phone counts — get it out of your head and onto a track.',
+    nextAction: 'Record one rough take or sketch' },
+  { id: 'r-longgame', name: 'The Long Game', domainId: 'money', cadence: 'monthly', status: 'active', urgent: false, feature: null,
+    intention: 'Mallory Bros built it on Patreon — that is the model. The archive comes first; the profit compounds later. You are the project, and one day the project pays.',
+    nextAction: 'Study how one creator you rate actually earns' },
   { id: 'r-therapy', name: 'Therapy', domainId: 'mind', cadence: 'biweekly', status: 'active', urgent: false, feature: 'therapy',
     intention: 'A pulse check. It keeps you afloat, confident, clear and in movement.',
     nextAction: 'Note what to bring to the next session' },
+  { id: 'r-journal', name: 'Journal', domainId: 'mind', cadence: 'daily', status: 'active', urgent: false, feature: null,
+    intention: 'Therapy is every two weeks; the journal is what happens in between. A few honest lines, no performance.',
+    nextAction: 'Write a few honest lines' },
   { id: 'r-grooming', name: 'Haircut & Grooming', domainId: 'style', cadence: 'biweekly', status: 'active', urgent: false, feature: null,
     intention: 'Bi-weekly. The other pulse check — it changes how you carry yourself.',
     nextAction: 'Book the next cut' },
@@ -106,6 +118,9 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-money', name: 'Finances & Saving', domainId: 'money', cadence: 'weekly', status: 'active', urgent: false, feature: 'money',
     intention: 'A minimal-spending month. Tools motivate you — but the right tool at the wrong time is just a purchase.',
     nextAction: 'Check the numbers, buy nothing' },
+  { id: 'r-sidemoney', name: 'Side Money', domainId: 'money', cadence: 'weekly', status: 'active', urgent: false, feature: 'money',
+    intention: 'Profit outside the paycheque. Commissions, apps, content, flips — name the play, run it, log what it actually brought in.',
+    nextAction: "Name this month's side-money play" },
   { id: 'r-rentals', name: 'Rentals & Commission', domainId: 'career', cadence: 'weekly', status: 'active', urgent: false, feature: 'career',
     intention: 'Part-time income. Do the job well and the commission follows.',
     nextAction: 'Follow up on an active lead' },
@@ -130,6 +145,12 @@ const roomSeeds: RoomSeed[] = [
   { id: 'r-plants', name: 'Plants', domainId: 'home', cadence: 'weekly', status: 'active', urgent: false, feature: null,
     intention: 'Living things in your space that only do well if you show up. Low effort, high signal — a room that tells the truth about how the rest of the weeks are going.',
     nextAction: 'Water, turn, check the leaves' },
+  { id: 'r-apps', name: 'App Building', domainId: 'projects', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'Yayo Thru Time, Apply Mate, Accora Brain — that is already a portfolio. Building with Claude is a craft you are sharpening; the shelf is not a graveyard, it is a catalogue. One app in front at a time.',
+    nextAction: 'One focused block on the app in front' },
+  { id: 'r-audience', name: 'Audience', domainId: 'creative', cadence: 'weekly', status: 'active', urgent: false, feature: null,
+    intention: 'The archive stays private — this is the public lane. An audience is grown, not found: small and consistent. When something in the vault deserves daylight, it goes through here.',
+    nextAction: 'Post one small thing, anywhere' },
   { id: 'r-accora', name: 'Accora Brain', domainId: 'projects', cadence: 'as-needed', status: 'maintenance', urgent: false, feature: null,
     intention: 'Stable. Capture ideas and bugs only. You have poured enough of yourself into it for now.',
     nextAction: 'Capture ideas. Do not develop.' }
@@ -167,15 +188,15 @@ const channelSeeds: Channel[] = [
   { id: 'ch-body', name: 'THE BODY', tagline: 'Build the frame. Eat, move, recover.',
     color: '#199e70', weight: 5, order: 1,
     roomIds: ['r-movement', 'r-eat', 'r-doctor'] },
-  { id: 'ch-build', name: 'THE BUILD', tagline: 'Options, licence, income. The future you are owed.',
+  { id: 'ch-build', name: 'THE BUILD', tagline: 'Options, licence, income, apps. The future you are owed.',
     color: '#3987e5', weight: 5, order: 2,
-    roomIds: ['r-license', 'r-realtor', 'r-rentals', 'r-money', 'r-accora'] },
-  { id: 'ch-truce', name: 'TRUCE', tagline: 'The channel. Film it, cut it, publish it.',
+    roomIds: ['r-license', 'r-realtor', 'r-rentals', 'r-money', 'r-sidemoney', 'r-apps', 'r-accora'] },
+  { id: 'ch-truce', name: 'TRUCE', tagline: 'The archive. Film it, cut it, record it — track the evolution.',
     color: '#d95926', weight: 4, order: 3,
-    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast'] },
+    roomIds: ['r-vlog', 'r-editing', 'r-dslr', 'r-podcast', 'r-pod-ent', 'r-music', 'r-audience', 'r-longgame'] },
   { id: 'ch-mind', name: 'THE MIND', tagline: 'Read, reflect, stay clean, stay honest.',
     color: '#9085e9', weight: 4, order: 4,
-    roomIds: ['r-reading', 'r-therapy', 'r-identity', 'r-monk'] },
+    roomIds: ['r-reading', 'r-therapy', 'r-journal', 'r-identity', 'r-monk'] },
   { id: 'ch-people', name: 'THE PEOPLE', tagline: 'The ones who are still there when the projects stall.',
     color: '#d55181', weight: 4, order: 5,
     roomIds: ['r-people'] },
@@ -193,7 +214,9 @@ const channelSeeds: Channel[] = [
 const defaultWindow: Window60 = {
   number: 2, startDate: null as unknown as string, days: 60,
   intention: 'Second window. Nurture everything — let nothing starve.',
-  active: false
+  active: false,
+  // This season's dial: licence, real estate enrollment, French.
+  focusRoomIds: ['r-license', 'r-realtor', 'r-french']
 }
 
 const defaultRoutine: Routine = {
@@ -334,6 +357,32 @@ function migrate(parsed: any): AppState {
   for (const seedRoom of base.rooms) {
     if (!next.rooms.some(r => r.id === seedRoom.id)) next.rooms = [...next.rooms, seedRoom]
   }
+  // v4: seed rooms added after a channel was stored (music, journal, the pods)
+  // still need to be wired into that channel, or they'd never get a turn.
+  // Taglines aren't user-editable, so they refresh from the seed; weight and
+  // order stay whatever the user tuned them to.
+  next.channels = next.channels.map(ch => {
+    const seed = channelSeeds.find(c => c.id === ch.id)
+    if (!seed) return ch
+    const missing = seed.roomIds.filter(id => !ch.roomIds.includes(id))
+    return { ...ch, tagline: seed.tagline, roomIds: missing.length ? [...ch.roomIds, ...missing] : ch.roomIds }
+  })
+  // v5: seed copy whose meaning changed (vlog = the archive, podcast = the Self
+  // Pod now that there are two) — refresh only if the user never edited it.
+  const v4Copy: Record<string, { name?: string; intention: string }> = {
+    'r-vlog': { intention: 'A by-product of the project. It tracks the progression in real time and shows what it looks like.' },
+    'r-podcast': { name: 'Podcast', intention: 'Usually after therapy, while your head is clear. Build the rhythm instead of waiting for the mood.' }
+  }
+  next.rooms = next.rooms.map(r => {
+    const old = v4Copy[r.id]
+    const seed = base.rooms.find(b => b.id === r.id)
+    if (!old || !seed) return r
+    return {
+      ...r,
+      name: old.name && r.name === old.name ? seed.name : r.name,
+      intention: r.intention === old.intention ? seed.intention : r.intention
+    }
+  })
   next.window = parsed.window?.startDate
     ? { ...defaultWindow, ...parsed.window }
     : { ...defaultWindow, startDate: todayISO(), active: true }

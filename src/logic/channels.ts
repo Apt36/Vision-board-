@@ -87,6 +87,25 @@ export function channelStates(state: AppState, today = todayISO()): ChannelState
   })
 }
 
+// ===== The season dial =====
+
+/** Rooms the current window leans toward. Empty = no dial set, pure rotation. */
+export function seasonFocusIds(state: AppState): string[] {
+  return state.window.focusRoomIds ?? []
+}
+
+export function isSeasonFocus(state: AppState, roomId: string): boolean {
+  return seasonFocusIds(state).includes(roomId)
+}
+
+/**
+ * How much the dial tilts a channel's pressure. A channel holding focus rooms
+ * gets picked more often; everyone else still rotates — a season never mutes.
+ */
+export function seasonBoost(state: AppState, channel: Channel): number {
+  return channel.roomIds.some(id => isSeasonFocus(state, id)) ? 1.5 : 1
+}
+
 // ===== Today's assignment =====
 
 export interface AssignedRoom { room: Room; minutes: number }
@@ -128,12 +147,15 @@ export function todaysAssignment(state: AppState, today = todayISO()): DailyAssi
   const pool = eligible.length ? eligible : states.filter(s => s.rooms.length > 0)
   if (pool.length === 0) return null
 
+  const dialed = (s: ChannelState) => s.pressure * seasonBoost(state, s.channel)
   const chosen = pinned
     ? pool.find(s => s.channel.id === pinned.channelId) ?? pool[0]
-    : [...pool].sort((a, b) => b.pressure - a.pressure || b.channel.weight - a.channel.weight)[0]
+    : [...pool].sort((a, b) => dialed(b) - dialed(a) || b.channel.weight - a.channel.weight)[0]
 
-  // Inside the channel, prefer urgent rooms, then the ones longest untouched.
+  // Inside the channel: season focus first, then urgent, then longest untouched.
   const ranked = [...chosen.rooms].sort((a, b) => {
+    const af = isSeasonFocus(state, a.id), bf = isSeasonFocus(state, b.id)
+    if (af !== bf) return af ? -1 : 1
     if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
     const av = a.lastEntered ?? '0000-00-00'
     const bv = b.lastEntered ?? '0000-00-00'
@@ -157,11 +179,12 @@ export function todaysAssignment(state: AppState, today = todayISO()): DailyAssi
     }
   }
 
+  const inSeason = seasonBoost(state, chosen.channel) > 1
   const why = chosen.daysSince == null
     ? `${chosen.channel.name} has not had a turn yet this window.`
     : chosen.daysSince === 0
       ? `${chosen.channel.name} already had a turn today — this is a bonus round.`
-      : `${chosen.channel.name} has gone ${chosen.daysSince} day${chosen.daysSince === 1 ? '' : 's'} without a turn, the longest of any channel relative to how much it matters.`
+      : `${chosen.channel.name} has gone ${chosen.daysSince} day${chosen.daysSince === 1 ? '' : 's'} without a turn${inSeason ? ", and it's part of this season's dial" : ', the longest of any channel relative to how much it matters'}.`
 
   return {
     channel: chosen.channel,

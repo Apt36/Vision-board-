@@ -2,6 +2,7 @@ import type { AppState, Room } from '../types'
 import { CADENCE_DAYS } from '../store'
 import { fromISO, todayISO } from './date'
 import { capacityFor } from './capacity'
+import { isSeasonFocus } from './channels'
 import { currentWeekPriorities } from './recommend'
 
 export function daysSince(iso: string | null, today = todayISO()): number | null {
@@ -41,6 +42,7 @@ export function rankRooms(state: AppState, today = todayISO()): RoomCandidate[] 
         : `${since} day${since === 1 ? '' : 's'} since you were in here`
 
       if (r.urgent) { score += 1.1; reason = since == null ? 'Pressing — not started' : reason }
+      if (isSeasonFocus(state, r.id)) { score += 0.8; reason = `Season focus · ${reason.charAt(0).toLowerCase()}${reason.slice(1)}` }
       if (priorities.includes(r.domainId)) score += 0.5
       if (since === 0) score -= 2.5 // already had its turn today
 

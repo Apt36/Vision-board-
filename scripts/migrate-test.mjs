@@ -29,8 +29,8 @@ await p.waitForTimeout(500)
 
 const s=await p.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
 console.log('Migration v1 -> v2')
-ok('app still renders', await p.getByText('MATT OS').first().isVisible())
-ok('version bumped', s.version===3, s.version)
+ok('app still renders', await p.getByText('Journey').first().isVisible())
+ok('version bumped', s.version===6, s.version)
 ok('check-in preserved', !!s.checkins['2026-08-13'])
 const c=s.checkins['2026-08-13']
 ok('meals=2 became breakfast+lunch', c.breakfast===true&&c.lunch===true&&c.dinner===false, JSON.stringify({b:c.breakfast,l:c.lunch,d:c.dinner}))
@@ -75,8 +75,8 @@ v2.edits = [{id:'e1',date:'2026-08-14',title:'wk',minutes:40,clipIds:[],publishe
 await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v2)
 await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
 const s3=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
-ok('v3 version', s3.version===3, s3.version)
-ok('app renders after v3 migrate', await p2.getByText('MATT OS').first().isVisible())
+ok('v3 version', s3.version===6, s3.version)
+ok('app renders after v3 migrate', await p2.getByText('Journey').first().isVisible())
 ok('channels added', s3.channels?.length===8, s3.channels?.length)
 ok('window started', !!s3.window?.startDate && s3.window.number===2)
 ok('plants room added', s3.rooms.some(r=>r.id==='r-plants'))
@@ -94,6 +94,73 @@ ok('every channel room resolves', s3.channels.every(c=>c.roomIds.every(id=>s3.ro
 await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(400)
 const s4=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
 ok('v3 idempotent', s4.channels.length===8 && s4.rooms.length===s3.rooms.length && s4.window.number===2)
+
+// ---- v3 -> v4: an install with channels stored before music/journal existed ----
+console.log('\nMigration v3 -> v4')
+const v3 = JSON.parse(JSON.stringify(s4))
+v3.version = 3
+v3.rooms = v3.rooms.filter(r => r.id !== 'r-music' && r.id !== 'r-journal')
+v3.channels = v3.channels.map(c => ({...c, roomIds: c.roomIds.filter(id => id !== 'r-music' && id !== 'r-journal')}))
+v3.channels.find(c => c.id === 'ch-truce').weight = 5 // user-tuned weight must survive
+await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v3)
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
+const s5=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('v4 version', s5.version===6, s5.version)
+ok('music room added', s5.rooms.some(r=>r.id==='r-music'))
+ok('journal room added', s5.rooms.some(r=>r.id==='r-journal'))
+ok('music wired into TRUCE', s5.channels.find(c=>c.id==='ch-truce')?.roomIds.includes('r-music'))
+ok('journal wired into THE MIND', s5.channels.find(c=>c.id==='ch-mind')?.roomIds.includes('r-journal'))
+ok('tuned channel weight kept', s5.channels.find(c=>c.id==='ch-truce')?.weight===5)
+ok('rooms not duplicated', s5.rooms.filter(r=>r.id==='r-music').length===1 && s5.rooms.filter(r=>r.id==='r-journal').length===1)
+
+// ---- v4 -> v5: the season dial, the second pod, the long game ----
+console.log('\nMigration v4 -> v5')
+const v4 = JSON.parse(JSON.stringify(s5))
+v4.version = 4
+delete v4.window.focusRoomIds
+v4.rooms = v4.rooms.filter(r => r.id !== 'r-pod-ent' && r.id !== 'r-longgame')
+v4.channels = v4.channels.map(c => ({...c, roomIds: c.roomIds.filter(id => id !== 'r-pod-ent' && id !== 'r-longgame')}))
+// untouched podcast room (old seed name + intention) must get the new copy...
+const pod = v4.rooms.find(r => r.id === 'r-podcast')
+pod.name = 'Podcast'
+pod.intention = 'Usually after therapy, while your head is clear. Build the rhythm instead of waiting for the mood.'
+// ...but a user-edited vlog intention must be left alone
+v4.rooms.find(r => r.id === 'r-vlog').intention = 'my own words about the vlog'
+await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v4)
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
+const s6=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('v5 version', s6.version===6, s6.version)
+ok('season dial seeded', JSON.stringify(s6.window.focusRoomIds)===JSON.stringify(['r-license','r-realtor','r-french']), JSON.stringify(s6.window.focusRoomIds))
+ok('entertainment pod added', s6.rooms.some(r=>r.id==='r-pod-ent'))
+ok('long game room added', s6.rooms.some(r=>r.id==='r-longgame'))
+ok('both wired into TRUCE', ['r-pod-ent','r-longgame'].every(id=>s6.channels.find(c=>c.id==='ch-truce')?.roomIds.includes(id)))
+ok('untouched podcast renamed to Self Pod', s6.rooms.find(r=>r.id==='r-podcast')?.name==='Self Pod')
+ok('edited vlog intention preserved', s6.rooms.find(r=>r.id==='r-vlog')?.intention==='my own words about the vlog')
+ok('truce tagline refreshed', s6.channels.find(c=>c.id==='ch-truce')?.tagline.includes('archive'), s6.channels.find(c=>c.id==='ch-truce')?.tagline)
+// a dial the user already set must survive a reload untouched
+await p2.evaluate(()=>{const st=JSON.parse(localStorage.getItem('matt-os-state-v1'));st.window.focusRoomIds=['r-music'];localStorage.setItem('matt-os-state-v1',JSON.stringify(st))})
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(400)
+const s7=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('user-set dial survives reload', JSON.stringify(s7.window.focusRoomIds)===JSON.stringify(['r-music']), JSON.stringify(s7.window.focusRoomIds))
+
+// ---- v5 -> v6: side money, audience, app building ----
+console.log('\nMigration v5 -> v6')
+const v5s = JSON.parse(JSON.stringify(s7))
+v5s.version = 5
+const V6_IDS = ['r-sidemoney','r-audience','r-apps']
+v5s.rooms = v5s.rooms.filter(r => !V6_IDS.includes(r.id))
+v5s.channels = v5s.channels.map(c => ({...c, roomIds: c.roomIds.filter(id => !V6_IDS.includes(id))}))
+await p2.evaluate(v=>localStorage.setItem('matt-os-state-v1',JSON.stringify(v)),v5s)
+await p2.reload({waitUntil:'networkidle'}); await p2.waitForTimeout(500)
+const s8=await p2.evaluate(()=>JSON.parse(localStorage.getItem('matt-os-state-v1')))
+ok('v6 version', s8.version===6, s8.version)
+ok('side money room added', s8.rooms.some(r=>r.id==='r-sidemoney'))
+ok('app building room added', s8.rooms.some(r=>r.id==='r-apps'))
+ok('audience room added', s8.rooms.some(r=>r.id==='r-audience'))
+ok('side money + apps wired into BUILD', ['r-sidemoney','r-apps'].every(id=>s8.channels.find(c=>c.id==='ch-build')?.roomIds.includes(id)))
+ok('audience wired into TRUCE', s8.channels.find(c=>c.id==='ch-truce')?.roomIds.includes('r-audience'))
+ok('accora stays in maintenance', s8.rooms.find(r=>r.id==='r-accora')?.status==='maintenance')
+ok('every channel room still resolves', s8.channels.every(c=>c.roomIds.every(id=>s8.rooms.some(r=>r.id===id))))
 
 await b.close()
 console.log(f===0?'\nMIGRATION SAFE':`\n${f} FAILURES`)
